@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+.carousel-item {
+  flex-shrink: 0;
+  width: 100%;
+}
+.reverse {
+  animation: reverseSlide 0.7s ease-in-out;
+}
+
+@keyframes reverseSlide {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+* {
+  margin: 0;
+  padding: 0;
+}
+
+input[type="number"] {
+  appearance: none; /* Standard */
+  -webkit-appearance: none; /* Webkit-specific */
+  -moz-appearance: textfield; /* Firefox-specific */
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--secondary) var(--primary);
+}
+
+/* Chrome, Edge, and Safari */
+*::-webkit-scrollbar {
+  width: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--primary);
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--secondary);
+  border-radius: 0px;
+  border: 10px solid var(--primary);
+}
+
+/* Additional rule to remove margins */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
