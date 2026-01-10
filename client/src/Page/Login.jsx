@@ -74,7 +74,12 @@ function Login() {
       setLoading(false);
     }
     if (res?.payload?.success) {
-      navigate("/");
+      const role = res.payload.data.role;
+      if (role === 'ADMIN') {
+        navigate("/DashBoard");
+      } else {
+        navigate("/");
+      }
       setLoginData({
         email: "",
         password: "",

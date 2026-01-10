@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import Layout from "../../layout/layout";
 import LoadingButton from "../../constants/LoadingBtn";
 import { AddNewProduct, getProductsForSelection } from "../../Redux/Slice/ProductSlice";
+import { addCategory } from "../../Redux/Slice/CategorySlice";
 import { formatPrice } from "./format";
 
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL", "FREE"];
@@ -21,13 +22,19 @@ const emptyColor = () => ({
 export default function AddProduct() {
   const dispatch = useDispatch();
   const { CategoryList } = useSelector(s => s.Category);
+  const addCategoryToList = (category) => {
+    if (category && !CategoryList.some(c => c.category === category)) {
+      dispatch(addCategory({ category }));
+    }
+  };
   const [selectionProducts, setSelectionProducts] = useState([]);
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(2);
   const [loading, setLoading] = useState(false);
+  const [isChangingType, setIsChangingType] = useState(false);
 
   const [product, setProduct] = useState({
-    productType: "",
+    productType: "simple",
     name: "",
     description: "",
     category: "",
@@ -54,14 +61,14 @@ export default function AddProduct() {
   });
 
   useEffect(() => {
-    if (step === 2 && product.productType === "bundle") {
+    if (product.productType === "bundle") {
       dispatch(getProductsForSelection({ limit: 20 })).then(res => {
         if (res.payload?.success) {
           setSelectionProducts(res.payload.data);
         }
       });
     }
-  }, [step, product.productType, dispatch]);
+  }, [product.productType, dispatch]);
 
   // Auto-generate SKU
   const generateSKU = (type, category, extra = "") => {
@@ -162,7 +169,7 @@ export default function AddProduct() {
         ...p.bundleProducts,
         products: [
           ...p.bundleProducts.products,
-          { product: "", quantity: 1 },
+          { product: "", sku: "", size: "", color: "", quantity: 1 },
         ],
       },
     }));
@@ -219,8 +226,20 @@ export default function AddProduct() {
       const b = product.bundleProducts;
       if(b.images.length==0) return toast.error("Bundle images required...")
       if (!b.sku) return toast.error("Bundle SKU required");
+      if (!b.price) return toast.error("Bundle price required");
       if (b.products.length === 0)
         return toast.error("Add at least one product to bundle");
+
+      for (const item of b.products) {
+        if (!item.product) return toast.error("Select product for all bundle items");
+        const prod = selectionProducts.find(p => p._id === item.product);
+        if (prod?.productType === "variant" && !item.sku) {
+          return toast.error("Select variant for variant products in bundle");
+        }
+        if (prod?.productType !== "variant" && item.sku) {
+          return toast.error("SKU not allowed for non-variant products");
+        }
+      }
 
       const ids = b.products.map(p => p.product);
       if (new Set(ids).size !== ids.length)
@@ -278,6 +297,7 @@ export default function AddProduct() {
       }
 
       const res = await dispatch(AddNewProduct(fd));
+      console.log(res)
       res?.payload?.success
         ? toast.success("Product Created")
         : toast.error(res?.payload?.message || "Failed");
@@ -289,54 +309,95 @@ export default function AddProduct() {
   /* ================= UI ================= */
   return (
     <Layout>
-      <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen space-y-6">
-
-        {/* STEP 1 */}
-        {step === 1 && (
-          <div className="max-w-md mx-auto bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
-            <h2 className="text-xl font-bold text-center text-gray-800 dark:text-gray-100">Select Product Type</h2>
-            {["simple", "variant", "bundle"].map(t => (
-              <button
-                key={t}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-xl transition-colors"
-                onClick={() => {
-                  setProduct(p => ({ ...p, productType: t }));
-                  setStep(2);
-                }}
-              >
-                {t.toUpperCase()}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="p-4 md:p-6 bg-gray-100 dark:bg-gray-900 min-h-screen space-y-6">
 
         {/* STEP 2 */}
         {step === 2 && (
           <>
             {/* BASIC */}
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
+            <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg space-y-4">
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Basic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <input className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Product Name"
                   value={product.name}
                   onChange={e => setField("name", e.target.value)} />
-                <select className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100"
+                <input
+                  className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                  placeholder="Category"
                   value={product.category}
-                  onChange={e => setField("category", e.target.value)}>
-                  <option value="">Select Category</option>
+                  onChange={e => setField("category", e.target.value)}
+                  onBlur={e => addCategoryToList(e.target.value)}
+                  list="categories"
+                />
+                <datalist id="categories">
                   {CategoryList?.map(c => (
-                    <option key={c.category} value={c.category}>{c.category}</option>
+                    <option key={c.category} value={c.category} />
                   ))}
-                </select>
+                </datalist>
+                <input
+                  className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                  placeholder="GST %"
+                  type="number"
+                  value={product.gst}
+                  onChange={e => setField("gst", e.target.value)}
+                />
               </div>
-              <textarea className="input h-24  w-full bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Description"
+              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-2 sm:space-y-0">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Product Type:</span>
+                {isChangingType ? (
+                  <select
+                    className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 flex-1"
+                    value={product.productType}
+                    onChange={e => {
+                      setField("productType", e.target.value);
+                      // Reset other data when changing type
+                      if (e.target.value === "simple") {
+                        setProduct(p => ({
+                          ...p,
+                          simpleProduct: { price: "", discount: 0, stockQuantity: "", sku: "", images: [] },
+                          variants: [{ size: "", colors: [emptyColor()] }],
+                          bundleProducts: { sku: "", discount: 0, images: [], products: [] }
+                        }));
+                      } else if (e.target.value === "variant") {
+                        setProduct(p => ({
+                          ...p,
+                          simpleProduct: { price: "", discount: 0, stockQuantity: "", sku: "", images: [] },
+                          variants: [{ size: "", colors: [emptyColor()] }],
+                          bundleProducts: { sku: "", discount: 0, images: [], products: [] }
+                        }));
+                      } else if (e.target.value === "bundle") {
+                        setProduct(p => ({
+                          ...p,
+                          simpleProduct: { price: "", discount: 0, stockQuantity: "", sku: "", images: [] },
+                          variants: [{ size: "", colors: [emptyColor()] }],
+                          bundleProducts: { sku: "", discount: 0, images: [], products: [] }
+                        }));
+                      }
+                      setIsChangingType(false);
+                    }}
+                  >
+                    <option value="simple">Simple</option>
+                    <option value="variant">Variant</option>
+                    <option value="bundle">Bundle</option>
+                  </select>
+                ) : (
+                  <span className="text-gray-900 dark:text-gray-100 capitalize flex-1">{product.productType}</span>
+                )}
+                <button
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm transition-colors"
+                  onClick={() => setIsChangingType(true)}
+                >
+                  Change
+                </button>
+              </div>
+              <textarea className="input h-24 w-full bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Description"
                 value={product.description}
                 onChange={e => setField("description", e.target.value)} />
             </div>
   {product.productType === "simple" && (
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Simple Product Details</h3>
-                <div className="grid grid-cols-2 gap-4">
+             <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg space-y-4">
+               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Simple Product Details</h3>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input
                     className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                     placeholder="Price"
@@ -416,7 +477,7 @@ export default function AddProduct() {
 
                     {v.colors.map((c, ci) => (
                       <div key={ci} className="border border-gray-300 dark:border-gray-600 p-4 rounded-xl space-y-3 bg-gray-50 dark:bg-gray-700">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="flex items-center space-x-2">
                             <input className="input flex-1 bg-white dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Color Name"
                               value={c.name}
@@ -493,12 +554,16 @@ export default function AddProduct() {
 
             {/* BUNDLE */}
             {product.productType === "bundle" && (
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg space-y-4">
+              <div className="bg-white dark:bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg space-y-4">
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Bundle Details</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <input className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Bundle SKU (auto-generated)"
                     value={product.bundleProducts.sku}
                     readOnly />
+                  <input className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Bundle Price"
+                    type="number"
+                    value={product.bundleProducts.price || ""}
+                    onChange={e => setBundleField("price", e.target.value)} />
                   <input className="input bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400" placeholder="Bundle Discount %"
                     type="number"
                     value={product.bundleProducts.discount}
@@ -533,6 +598,8 @@ export default function AddProduct() {
                   <h4 className="font-medium text-gray-700 dark:text-gray-300">Products in Bundle</h4>
                   {product.bundleProducts.products.map((b, i) => {
                     const selectedProduct = selectionProducts.find(p => p._id === b.product);
+                    const selectedVariant = selectedProduct?.productType === "variant" && b.sku ?
+                      selectedProduct.variants?.flatMap(v => v.colors).find(c => c.sku === b.sku) : null;
                     return (
                       <div key={i} className="border border-gray-300 dark:border-gray-600 p-4 rounded-xl space-y-3 bg-gray-50 dark:bg-gray-700">
                         <select className="input bg-white dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100"
@@ -540,18 +607,60 @@ export default function AddProduct() {
                           onChange={e => setBundleProduct(i, "product", e.target.value)}>
                           <option value="">Select Product</option>
                           {selectionProducts.map(p => (
-                            <option key={p._id} value={p._id}>{p.name} ({p.productType}) - {formatPrice(p.finalPrice)}</option>
+                            <option key={p._id} value={p._id}>{p.name.length > 30 ? p.name.slice(0,30)+'...' : p.name} - {formatPrice(p.finalPrice)}</option>
                           ))}
                         </select>
+                        {selectedProduct && selectedProduct.productType === "variant" && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <select className="input bg-white dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100"
+                              value={b.size || ""}
+                              onChange={e => {
+                                const size = e.target.value;
+                                setBundleProduct(i, "size", size);
+                                // Reset color and sku if size changes
+                                setBundleProduct(i, "color", "");
+                                setBundleProduct(i, "sku", "");
+                              }}>
+                              <option value="">Select Size</option>
+                              {selectedProduct.variants?.map(v => (
+                                <option key={v.size} value={v.size}>{v.size}</option>
+                              ))}
+                            </select>
+                            <select className="input bg-white dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100"
+                              value={b.color || ""}
+                              onChange={e => {
+                                const colorName = e.target.value;
+                                setBundleProduct(i, "color", colorName);
+                                // Find sku
+                                const variant = selectedProduct.variants?.find(v => v.size === b.size);
+                                const color = variant?.colors?.find(c => c.name === colorName);
+                                if (color) {
+                                  setBundleProduct(i, "sku", color.sku);
+                                }
+                              }}
+                              disabled={!b.size}>
+                              <option value="">Select Color</option>
+                              {selectedProduct.variants?.find(v => v.size === b.size)?.colors?.map(c => (
+                                <option key={c.name} value={c.name}>{c.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         {selectedProduct && (
                           <div className="flex items-center space-x-3">
-                            <img src={selectedProduct.thumbnail} alt={selectedProduct.name} className="w-12 h-12 object-cover rounded" />
+                            <img src={selectedVariant ? selectedVariant.images?.[0]?.secure_url : selectedProduct.thumbnail} alt={selectedProduct.name} className="w-12 h-12 object-cover rounded" />
                             <div>
                               <p className="font-medium text-gray-900 dark:text-gray-100">{selectedProduct.name}</p>
-                              <p className="text-sm text-green-600 dark:text-green-400">{formatPrice(selectedProduct.finalPrice)}</p>
+                              <p className="text-sm text-green-600 dark:text-green-400">{formatPrice(selectedVariant ? selectedVariant.finalPrice : selectedProduct.finalPrice)}</p>
+                              {selectedVariant && <p className="text-xs text-gray-500 dark:text-gray-400">{b.size} - {b.color}</p>}
                             </div>
                           </div>
                         )}
+                        <input className="input bg-white dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-100" placeholder="Quantity"
+                          type="number"
+                          min="1"
+                          value={b.quantity}
+                          onChange={e => setBundleProduct(i, "quantity", Number(e.target.value))} />
                         <button onClick={() => removeBundleProduct(i)}
                           className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Remove Product</button>
                       </div>

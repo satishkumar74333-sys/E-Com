@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { getAllUpsells, createUpsell, updateUpsell, deleteUpsell } from "../../Redux/Slice/UpsellSlice";
-import { getAllProduct } from "../../Redux/Slice/ProductSlice";
+import { getAllProduct, getProduct } from "../../Redux/Slice/ProductSlice";
 import LoadingButton from "../../constants/LoadingBtn";
 import { formatPrice } from "../../Page/Product/format";
 import toast from "react-hot-toast";
+import Layout from "../../layout/layout";
 
 const UpsellManagement = () => {
   const dispatch = useDispatch();
@@ -18,6 +19,7 @@ const UpsellManagement = () => {
     minQty: 1,
     active: true,
   });
+  const [selectedVariants, setSelectedVariants] = useState({}); // productId -> sku
   const [isEditing, setIsEditing] = useState(false);
   const [productsLoading, setProductsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,12 +27,13 @@ const UpsellManagement = () => {
   const [sortBy, setSortBy] = useState("newest"); // newest, oldest, name
   const [selectedUpsells, setSelectedUpsells] = useState([]);
   const [bulkAction, setBulkAction] = useState("");
-
+  const [fullProductDetails, setFullProductDetails] = useState({});
+const [isloading,setIsloading]=useState(false)
   useEffect(() => {
     dispatch(getAllUpsells());
     const loadProducts = async () => {
       setProductsLoading(true);
-      await dispatch(getAllProduct({ limit: 100 }));
+      await dispatch(getAllProduct({ limit: 1000 })); // Increase limit to get more products
       setProductsLoading(false);
     };
     loadProducts();
@@ -45,6 +48,7 @@ const UpsellManagement = () => {
     });
     setSelectedUpsell(null);
     setIsEditing(false);
+    setSelectedVariants({});
   };
 
   const handleSubmit = async (e) => {
@@ -67,21 +71,56 @@ const UpsellManagement = () => {
       if (isEditing && selectedUpsell) {
         await dispatch(updateUpsell({ id: selectedUpsell._id, data: formData }));
       } else {
-      const res=  await dispatch(createUpsell(formData));
-   console.log(res)   }
-      // resetForm();
+       setIsloading(true)
+       const res=  await dispatch(createUpsell(formData));
+       setIsloading(false)
+       
+      if(res?.payload.success){
+        toast.success(res?.payload.message)
+        resetForm();
+            }else{
+               toast.error(res?.payload.message)
+            }
+          }
     } catch (error) {
       console.error("Upsell save error:", error);
       toast.error(error?.response?.data?.message || "Failed to save upsell");
     }
   };
 
-  const handleEdit = (upsell) => {
+  const handleEdit = async (upsell) => {
     setSelectedUpsell(upsell);
+    const variants = {};
+    upsell.upsellProducts.forEach(item => {
+      if (item.sku) {
+        variants[item.product?._id || item.product] = item.sku;
+      }
+    });
+    setSelectedVariants(variants);
+
+    // Fetch full product details for variant products
+    const variantProducts = upsell.upsellProducts.filter(item =>
+      products?.find(p => p._id === (item.product?._id || item.product))?.productType === "variant"
+    );
+    for (const item of variantProducts) {
+      const productId = item.product?._id || item.product;
+      if (!fullProductDetails[productId]) {
+        try {
+          const res = await dispatch(getProduct(productId));
+          if (res?.payload?.success) {
+            setFullProductDetails(prev => ({ ...prev, [productId]: res.payload.data }));
+          }
+        } catch (error) {
+          console.error("Error fetching product details:", error);
+        }
+      }
+    }
+
     setFormData({
       triggerProduct: upsell.triggerProduct?._id || upsell.triggerProduct,
       upsellProducts: upsell.upsellProducts.map(item => ({
         product: item.product?._id || item.product,
+        sku: item.sku,
         discountType: item.discountType,
         discountValue: item.discountValue,
       })),
@@ -159,7 +198,7 @@ const UpsellManagement = () => {
   const addUpsellProduct = () => {
     setFormData(prev => ({
       ...prev,
-      upsellProducts: [...prev.upsellProducts, { product: "", discountType: "percentage", discountValue: 0 }]
+      upsellProducts: [...prev.upsellProducts, { product: "", sku: "", discountType: "percentage", discountValue: 0 }]
     }));
   };
 
@@ -170,15 +209,51 @@ const UpsellManagement = () => {
     }));
   };
 
-  const updateUpsellProduct = (index, field, value) => {
+  const updateUpsellProduct = async (index, field, value) => {
     if (field === "discountValue") {
       const num = parseFloat(value);
       value = isNaN(num) ? 0 : num;
     }
+    if (field === "product") {
+      // Reset sku when product changes
+      setSelectedVariants(prev => ({ ...prev, [value]: "" }));
+
+      // Fetch full product details if it's a variant
+      const selectedProduct = products?.find(p => p._id === value);
+      if (selectedProduct?.productType === "variant" && !fullProductDetails[value]) {
+        try {
+          const res = await dispatch(getProduct(value));
+          if (res?.payload?.success) {
+            setFullProductDetails(prev => ({ ...prev, [value]: res.payload.data }));
+          }
+        } catch (error) {
+          console.error("Error fetching product details:", error);
+        }
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        upsellProducts: prev.upsellProducts.map((item, i) =>
+          i === index ? { ...item, [field]: value, sku: "" } : item
+        )
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        upsellProducts: prev.upsellProducts.map((item, i) =>
+          i === index ? { ...item, [field]: value } : item
+        )
+      }));
+    }
+  };
+
+  const updateVariantSelection = (productId, sku) => {
+    setSelectedVariants(prev => ({ ...prev, [productId]: sku }));
+    // Update formData sku for the corresponding upsell product
     setFormData(prev => ({
       ...prev,
-      upsellProducts: prev.upsellProducts.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
+      upsellProducts: prev.upsellProducts.map(item =>
+        item.product === productId ? { ...item, sku } : item
       )
     }));
   };
@@ -188,18 +263,39 @@ const UpsellManagement = () => {
     return product ? product.name : "Unknown Product";
   };
 
-  const getProductPrice = (productId) => {
+  const getProductPrice = (productId, sku) => {
     const product = products?.find(p => p._id === productId);
     if (!product) return 0;
 
     if (product.productType === "simple") {
       return product.simpleProduct?.finalPrice || 0;
     } else if (product.productType === "variant") {
+      if (sku) {
+        const color = product.variants?.flatMap(v => v.colors).find(c => c.sku === sku);
+        return color?.finalPrice || 0;
+      }
       return product.variants?.[0]?.colors?.[0]?.finalPrice || 0;
     } else if (product.productType === "bundle") {
-      return product.bundleProducts?.price || 0;
+      return product.bundleProducts?.finalPrice || 0;
     }
     return 0;
+  };
+
+  const getVariantOptions = (productId) => {
+    const product = fullProductDetails[productId] || products?.find(p => p._id === productId);
+    if (!product || product.productType !== "variant") return [];
+
+    const options = [];
+    product.variants?.forEach(variant => {
+      variant.colors?.forEach(color => {
+        options.push({
+          sku: color.sku,
+          label: `${variant.size} - ${color.name} (${formatPrice(color.finalPrice || color.price)})`,
+          price: color.finalPrice || color.price
+        });
+      });
+    });
+    return options;
   };
 
   // Filter and sort upsells
@@ -242,7 +338,7 @@ const UpsellManagement = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen">
+    <Layout>    <div className="p-6 bg-gray-100 dark:bg-gray-900 min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Upsell Management</h2>
@@ -288,13 +384,21 @@ const UpsellManagement = () => {
                   required
                   disabled={productsLoading}
                 >
-                  <option value="">
+                  <option className="w-[250px]" value="">
                     {productsLoading ? "Loading products..." : "Select Trigger Product"}
                   </option>
                   {products?.map(product => (
-                    <option key={product._id} value={product._id}>
-                      {product.name} - {formatPrice(getProductPrice(product._id))}
-                    </option>
+                  <option
+  key={product._id}
+  value={product._id}
+  title={`${product.name} - ${formatPrice(getProductPrice(product._id))}`}
+>
+  {product.name.length > 40
+    ? product.name.slice(0, 40) + "..."
+    : product.name}{" "}
+  - {formatPrice(getProductPrice(product._id))}
+</option>
+
                   ))}
                 </select>
               </div>
@@ -343,74 +447,104 @@ const UpsellManagement = () => {
                 </div>
 
                 <div className="space-y-3">
-                  {formData.upsellProducts.map((item, index) => (
-                    <div key={index} className="border border-gray-300 dark:border-gray-600 p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <select
-                          value={item.product}
-                          onChange={(e) => updateUpsellProduct(index, "product", e.target.value)}
-                          className="p-2 border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-sm"
-                          required
-                          disabled={productsLoading}
-                        >
-                          <option value="">
-                            {productsLoading ? "Loading..." : "Select Product"}
-                          </option>
-                          {products?.filter(p => p._id !== formData.triggerProduct).map(product => (
-                            <option key={product._id} value={product._id}>
-                              {product.name}
-                            </option>
-                          ))}
-                        </select>
+                   {formData.upsellProducts.map((item, index) => {
+                     const selectedProduct = products?.find(p => p._id === item.product);
+                     const isVariant = selectedProduct?.productType === "variant";
+                     const variantOptions = getVariantOptions(item.product);
 
-                        <select
-                          value={item.discountType}
-                          onChange={(e) => updateUpsellProduct(index, "discountType", e.target.value)}
-                          className="p-2 border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-sm"
-                        >
-                          <option value="percentage">Percentage</option>
-                          <option value="flat">Flat Amount</option>
-                        </select>
+                     return (
+                       <div key={index} className="border border-gray-300 dark:border-gray-600 p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                           <select
+                             value={item.product}
+                             onChange={(e) => updateUpsellProduct(index, "product", e.target.value)}
+                             className="p-2 border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-sm"
+                             required
+                             disabled={productsLoading}
+                           >
+                             <option value="">
+                               {productsLoading ? "Loading..." : "Select Product"}
+                             </option>
+                             {products?.filter(p => p._id !== formData.triggerProduct).map(product => (
+                               <option key={product._id} value={product._id}>
+                                 {product.name}
+                               </option>
+                             ))}
+                           </select>
 
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            step={item.discountType === "percentage" ? "1" : "0.01"}
-                            value={item.discountValue}
-                            onChange={(e) => updateUpsellProduct(index, "discountValue", parseFloat(e.target.value))}
-                            placeholder={item.discountType === "percentage" ? "%" : "Amount"}
-                            className="flex-1 p-2 border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-sm"
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeUpsellProduct(index)}
-                            className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-sm"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
+                           <select
+                             value={item.discountType}
+                             onChange={(e) => updateUpsellProduct(index, "discountType", e.target.value)}
+                             className="p-2 border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-sm"
+                           >
+                             <option value="percentage">Percentage</option>
+                             <option value="flat">Flat Amount</option>
+                           </select>
 
-                      {item.product && (
-                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                          Original Price: {formatPrice(getProductPrice(item.product))}
-                          {item.discountType === "percentage" ? (
-                            <> → Discounted: {formatPrice(getProductPrice(item.product) * (1 - item.discountValue / 100))}</>
-                          ) : (
-                            <> → Discounted: {formatPrice(getProductPrice(item.product) - item.discountValue)}</>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                           <div className="flex gap-2">
+                             <input
+                               type="number"
+                               min="0"
+                               step={item.discountType === "percentage" ? "1" : "0.01"}
+                               value={item.discountValue||0}
+                               onChange={(e) => updateUpsellProduct(index, "discountValue", parseFloat(e.target.value))}
+                               placeholder={item.discountType === "percentage" ? "%" : "Amount"}
+                               className="flex-1 p-2 border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-sm"
+                               required
+                             />
+                             <button
+                               type="button"
+                               onClick={() => removeUpsellProduct(index)}
+                               className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 text-sm"
+                             >
+                               ×
+                             </button>
+                           </div>
+                         </div>
+
+                         {isVariant && (
+                           <div className="mt-3">
+                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                               Select Variant (Optional - leave empty to apply discount to entire product)
+                             </label>
+                             <select
+                               value={item.sku || ""}
+                               onChange={(e) => updateVariantSelection(item.product, e.target.value)}
+                               className="w-full p-2 border border-gray-300 dark:border-gray-500 rounded bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 text-sm"
+                             >
+                               <option value="">Apply to entire product</option>
+                               {variantOptions.length > 0 ? (
+                                 variantOptions.map(option => (
+                                   <option key={option.sku} value={option.sku}>
+                                     {option.label}
+                                   </option>
+                                 ))
+                               ) : (
+                                 <option disabled>Loading variants...</option>
+                               )}
+                             </select>
+                           </div>
+                         )}
+
+                         {item.product && (
+                           <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                             Original Price: {formatPrice(getProductPrice(item.product, item.sku))}
+                             {item.discountType === "percentage" ? (
+                               <> → Discounted: {formatPrice(getProductPrice(item.product, item.sku) * (1 - item.discountValue / 100))}</>
+                             ) : (
+                               <> → Discounted: {formatPrice(getProductPrice(item.product, item.sku) - item.discountValue)}</>
+                             )}
+                           </div>
+                         )}
+                       </div>
+                     );
+                   })}
+                 </div>
               </div>
 
               <div className="flex gap-3">
                 <LoadingButton
-                  loading={loading}
+                  loading={loading||isloading}
                   type="submit"
                   className="flex-1 " 
                   message={"loading..."}
@@ -575,7 +709,8 @@ const UpsellManagement = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div></Layout>
+
   );
 };
 

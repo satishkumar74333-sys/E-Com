@@ -9,12 +9,13 @@ function LoadingButton({
   width,
   textSize,
   ADMIN,
+  disabled=false
 }) {
   return (
     <button
       onClick={onClick}
       type="submit"
-      disabled={ADMIN || loading}
+      disabled={ADMIN || loading||disabled}
       className={`${
         width ? width : `w-full`
       }   rounded-lg transition-colors max-w-xs:text-sm   ${color} text-white ${textSize} `}

@@ -15,6 +15,10 @@ const UpsellSchema = new Schema(
           ref: "Product",
           required: true,
         },
+        sku: {
+          type: String,
+          required: false, // Only required for variant products
+        },
         discountType: {
           type: String,
           enum: ["percentage", "flat"],

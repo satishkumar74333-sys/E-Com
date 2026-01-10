@@ -116,18 +116,6 @@ export const UsersCart = ({ users }) => {
                   </td>
                   <td className="p-4 text-sm">{user.role}</td>
                   <td className="p-4 flex space-x-4">
-                    <LoadingButton
-                      ADMIN={user._id == data._id}
-                      message={"Removing..."}
-                      width={"w-[100px]"}
-                      textSize={"text-sm py-2"}
-                      name={"Delete"}
-                      loading={loading[user._id]}
-                      onClick={() =>
-                        handleDelete({ role: user.role, id: user._id })
-                      }
-                      color={"bg-red-500 hover:bg-red-600 text-white"}
-                    />
                     {role === "AUTHOR" && user.role === "USER" && (
                       <LoadingButton
                         ADMIN={user._id == data._id}

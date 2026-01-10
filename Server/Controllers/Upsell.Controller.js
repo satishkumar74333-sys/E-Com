@@ -4,6 +4,33 @@ import Product from "../module/Product.module.js";
 import AppError from "../utils/AppError.js";
 import { catchAsync } from "../utils/catchAsync.js";
 
+// Helper function to calculate bundle price
+const calculateBundlePrice = async (bundleProducts, gst) => {
+  let totalPrice = 0;
+  for (const item of bundleProducts.products) {
+    const product = await Product.findById(item.product);
+    if (!product) continue;
+    let price = 0;
+    if (product.productType === "simple") {
+      price = product.simpleProduct?.price || 0;
+      const discount = product.simpleProduct?.discount || 0;
+      const gstAmount = (price * gst) / 100;
+      const priceWithGst = price + gstAmount;
+      totalPrice += priceWithGst - Math.round((priceWithGst * discount) / 100);
+    } else if (product.productType === "variant") {
+      const firstColor = product.variants?.[0]?.colors?.[0];
+      if (firstColor) {
+        price = firstColor.price || 0;
+        const discount = firstColor.discount || 0;
+        const gstAmount = (price * gst) / 100;
+        const priceWithGst = price + gstAmount;
+        totalPrice += priceWithGst - Math.round((priceWithGst * discount) / 100);
+      }
+    }
+  }
+  return totalPrice;
+};
+
 // Get all upsells (for admin)
 export const getAllUpsells = catchAsync(async (req, res, next) => {
   const upsells = await Upsell.find({})
@@ -86,14 +113,50 @@ export const createOrUpdateUpsell = catchAsync(async (req, res, next) => {
       return next(new AppError(`Upsell product ${item.product} not found`, 404));
     }
 
-    // Get product price
+    // For variant products, if sku is provided, validate it exists
+    if (product.productType === 'variant' && item.sku) {
+      const colorExists = product.variants?.flatMap(v => v.colors).some(c => c.sku === item.sku);
+      if (!colorExists) {
+        return next(new AppError(`Invalid SKU ${item.sku} for variant product ${product.name}`, 400));
+      }
+    }
+
+    // Get product price (original price with GST)
     let price = 0;
     if (product.productType === 'simple') {
-      price = product.simpleProduct?.finalPrice || 0;
+      price = product.simpleProduct?.price || 0;
+      const gstAmount = (price * product.gst) / 100;
+      price += gstAmount;
     } else if (product.productType === 'variant') {
-      price = product.variants?.[0]?.colors?.[0]?.finalPrice || 0;
+      const gst = product.gst || 18; // Fallback GST
+      if (item.sku) {
+        const color = product.variants?.flatMap(v => v.colors).find(c => c.sku === item.sku);
+        if (color) {
+          price = Number(color.price) || 0;
+          if (price > 0) {
+            const gstAmount = (price * gst) / 100;
+            price += gstAmount;
+          }
+        }
+      } else {
+        // If no specific sku, use the lowest price variant for discount calculation
+        let minPrice = Infinity;
+        product.variants?.forEach(v => {
+          v.colors?.forEach(c => {
+            const cPrice = Number(c.price) || 0;
+            if (cPrice > 0 && cPrice < minPrice) minPrice = cPrice;
+          });
+        });
+        if (minPrice !== Infinity && minPrice > 0) {
+          price = minPrice;
+          const gstAmount = (price * gst) / 100;
+          price += gstAmount;
+        }
+      }
     } else if (product.productType === 'bundle') {
       price = product.bundleProducts?.price || 0;
+      const gstAmount = (price * product.gst) / 100;
+      price += gstAmount;
     }
 
     // Ensure discount doesn't make price negative or zero
@@ -238,6 +301,14 @@ export const updateUpsellAdmin = catchAsync(async (req, res, next) => {
     if (!product) {
       return next(new AppError(`Upsell product ${item.product} not found`, 404));
     }
+
+    // For variant products, if sku is provided, validate it exists
+    if (product.productType === 'variant' && item.sku) {
+      const colorExists = product.variants?.flatMap(v => v.colors).some(c => c.sku === item.sku);
+      if (!colorExists) {
+        return next(new AppError(`Invalid SKU ${item.sku} for variant product ${product.name}`, 400));
+      }
+    }
   }
 
   const upsell = await Upsell.findByIdAndUpdate(
@@ -294,52 +365,51 @@ export const deleteUpsellAdmin = catchAsync(async (req, res, next) => {
 });
 
 // Calculate discount for upsell products
-export const calculateUpsellDiscount = (cartItems, upsell) => {
+export const calculateUpsellDiscount = async (cartItems, upsell) => {
   let totalDiscount = 0;
   const triggerCartItem = cartItems.find(item => item.product.toString() === upsell.triggerProduct.toString());
- 
   if (!triggerCartItem || triggerCartItem.quantity < upsell.minQty) return 0;
 
-  for (const upsellItem of upsell.upsellProducts) {
-    const matchingCartItems = cartItems.filter(item => item.product.toString() === upsellItem.product.toString());
 
+  for (const upsellItem of upsell.upsellProducts) {
+    const matchingCartItems = cartItems.filter(item => item.product.toString() === upsellItem.product._id.toString());
     for (const cartItem of matchingCartItems) {
       // Check stock
       let stock = 0;
       const product = upsellItem.product;
-
       if (product.productType === 'simple') {
-        stock = product.simpleProduct.stock;
+        stock = product.simpleProduct.stockStatus !== "Out of stock" ? 999 : 0;
       } else if (product.productType === 'variant') {
-        const variant = product.variants.find(v => v.sku.toString() === cartItem.sku);
-        if (variant) {
-          const color = variant.colors.find(c => c._id.toString() === cartItem.colorId);
-          if (color) {
-            stock = color.stock;
-          }
+        const color = product.variants.flatMap(v => v.colors).find(c => c.sku === cartItem.sku);
+        if (color) {
+          stock = color.stockStatus !== "Out of stock" ? 999 : 0;
         }
       } else if (product.productType === 'bundle') {
-        stock = product.bundleProducts?.stock || 0;
+        stock = Infinity; // Virtual stock for bundles
       }
 
       if (stock >= cartItem.quantity) {
-        // Get price
+        // Get price (original price with GST)
         let price = 0;
 
         if (product.productType === 'simple') {
-          price = product.simpleProduct.finalPrice;
+          price = product.simpleProduct.price;
+          const gstAmount = (price * product.gst) / 100;
+          price += gstAmount;
         } else if (product.productType === 'variant') {
-          const variant = product.variants.find(v => v._id.toString() === cartItem.variantId);
-          if (variant) {
-            const color = variant.colors.find(c => c._id.toString() === cartItem.colorId);
-            if (color) {
-              price = color.finalPrice;
-            }
+          // Use the sku from upsellProducts for pricing, but check stock with cartItem.sku
+          const upsellSku = upsellItem.sku || cartItem.sku; // Fallback for backward compatibility
+          const color = product.variants.flatMap(v => v.colors).find(c => c.sku === upsellSku);
+          if (color) {
+            price = color.price;
+            const gstAmount = (price * product.gst) / 100;
+            price += gstAmount;
           }
         } else if (product.productType === 'bundle') {
-          price = product.bundleProducts?.price || 0;
+          price = product.bundleProducts.price;
+          const gstAmount = (price * product.gst) / 100;
+          price += gstAmount;
         }
-
         // Calculate discount
         if (upsellItem.discountType === 'percentage') {
           totalDiscount += (price * upsellItem.discountValue / 100) * cartItem.quantity;
@@ -349,12 +419,35 @@ export const calculateUpsellDiscount = (cartItems, upsell) => {
       }
     }
   }
-
+console.log(totalDiscount)
   return totalDiscount;
 };
 
 // Calculate total upsell savings for the cart
 export const calculateCartUpsellSavings = catchAsync(async (req, res, next) => {
+  const { cartItems } = req.body; // array of { product, variantId, colorId, quantity }
+  // Find all active upsells where trigger product is in cart
+  const triggerProductIds = cartItems.map(item => item.product);
+  const upsells = await Upsell.find({
+    triggerProduct: { $in: triggerProductIds },
+    active: true
+  }).populate('upsellProducts.product');
+
+  let totalSavings = 0;
+
+  for (const upsell of upsells) {
+    const discount = await calculateUpsellDiscount(cartItems, upsell);
+    totalSavings += discount;
+  }
+
+  res.status(200).json({
+    success: true,
+    data: { totalSavings }
+  });
+});
+
+// Get upsell suggestions for cart (products not in cart but can be added for discounts)
+export const getCartUpsellSuggestions = catchAsync(async (req, res, next) => {
   const { cartItems } = req.body; // array of { product, variantId, colorId, quantity }
 
   // Populate cart items with product details
@@ -365,22 +458,108 @@ export const calculateCartUpsellSavings = catchAsync(async (req, res, next) => {
     })
   );
 
+  const cartProductIds = populatedCartItems.map(item => item.product._id.toString());
+
   // Find all active upsells where trigger product is in cart
-  const triggerProductIds = populatedCartItems.map(item => item.product._id.toString());
+  const triggerProductIds = populatedCartItems.map(item => item.product._id);
   const upsells = await Upsell.find({
     triggerProduct: { $in: triggerProductIds },
     active: true
-  }).populate('upsellProducts.product');
+  }).populate({
+    path: 'upsellProducts.product',
+    select: 'name images sku productType simpleProduct variants bundleProducts gst'
+  }).populate({
+    path: 'triggerProduct',
+    select: 'name'
+  });
 
-  let totalSavings = 0;
+  const suggestions = [];
 
   for (const upsell of upsells) {
-    const discount = calculateUpsellDiscount(populatedCartItems, upsell);
-    totalSavings += discount;
+    const triggerInCart = populatedCartItems.find(item =>
+      item.product._id.toString() === upsell.triggerProduct._id.toString()
+    );
+
+    if (!triggerInCart || triggerInCart.quantity < upsell.minQty) continue;
+
+    // Check which upsell products are missing from cart
+    const missingUpsellProducts = upsell.upsellProducts.filter(upsellItem => {
+      return !cartProductIds.includes(upsellItem.product._id.toString());
+    });
+
+    if (missingUpsellProducts.length > 0) {
+      // Calculate potential savings if all missing products are added
+      let potentialSavings = 0;
+      const allUpsellProducts = [...upsell.upsellProducts];
+
+      for (const upsellItem of allUpsellProducts) {
+        // Get price for calculation (original price with GST)
+        let price = 0;
+        const product = upsellItem.product;
+
+        if (product.productType === 'simple') {
+          price = product.simpleProduct?.price || 0;
+          const gstAmount = (price * product.gst) / 100;
+          price += gstAmount;
+        } else if (product.productType === 'variant') {
+          const gst = product.gst || 18; // Fallback GST
+          if (upsellItem.sku) {
+            const color = product.variants?.flatMap(v => v.colors).find(c => c.sku === upsellItem.sku);
+            if (color) {
+              price = Number(color.price) || 0;
+              if (price > 0) {
+                const gstAmount = (price * gst) / 100;
+                price += gstAmount;
+              }
+            }
+          } else {
+            // If no specific sku, use the lowest price variant for potential savings calculation
+            let minPrice = Infinity;
+            product.variants?.forEach(v => {
+              v.colors?.forEach(c => {
+                const cPrice = Number(c.price) || 0;
+                if (cPrice > 0 && cPrice < minPrice) minPrice = cPrice;
+              });
+            });
+            if (minPrice !== Infinity && minPrice > 0) {
+              price = minPrice;
+              const gstAmount = (price * gst) / 100;
+              price += gstAmount;
+            }
+          }
+        } else if (product.productType === 'bundle') {
+          price = product.bundleProducts?.price || 0;
+          const gstAmount = (price * product.gst) / 100;
+          price += gstAmount;
+        }
+
+        // Calculate discount
+        if (upsellItem.discountType === 'percentage') {
+          potentialSavings += price * upsellItem.discountValue / 100;
+        } else if (upsellItem.discountType === 'flat') {
+          potentialSavings += upsellItem.discountValue;
+        }
+      }
+
+      suggestions.push({
+        triggerProduct: {
+          _id: upsell.triggerProduct._id,
+          name: upsell.triggerProduct.name
+        },
+        missingProducts: missingUpsellProducts.map(item => ({
+          product: item.product,
+          sku: item.sku,
+          discountType: item.discountType,
+          discountValue: item.discountValue
+        })),
+        potentialSavings,
+        minQty: upsell.minQty
+      });
+    }
   }
 
   res.status(200).json({
     success: true,
-    data: { totalSavings }
+    data: suggestions
   });
 });

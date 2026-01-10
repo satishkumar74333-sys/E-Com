@@ -296,8 +296,6 @@ function CheckoutPage() {
 
     async function OrderPlaceNew(paymentStatus) {
       setShowLoading(true);
-console.log(cart)
-return
       const orderData = {
         userId: UserId,
         products: cart,

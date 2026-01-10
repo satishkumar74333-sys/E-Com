@@ -100,6 +100,29 @@ export const CreateOrder = async (req, res, next) => {
 
       backendSubtotal += finalPrice;
 
+      let sku = "";
+      let variantInfo = {};
+
+      if (productFound.productType === "simple") {
+        sku = productFound.simpleProduct.sku;
+      } else if (productFound.productType === "variant") {
+        const variant = productFound.variants.find(v => v._id.toString() === product.variantId);
+        if (variant) {
+          const color = variant.colors.find(c => c._id.toString() === product.colorId);
+          if (color) {
+            sku = color.sku;
+            variantInfo = {
+              variantId: product.variantId,
+              colorId: product.colorId,
+              variant: variant.size,
+              color: color.name,
+            };
+          }
+        }
+      } else if (productFound.productType === "bundle") {
+        sku = productFound.bundleProducts.sku;
+      }
+
       return {
         product: productFound._id,
         productDetails: {
@@ -109,6 +132,8 @@ export const CreateOrder = async (req, res, next) => {
           price: finalPrice / product.quantity, // average price per unit
           gst: productFound.gst,
           discount: discountPercent,
+          sku: sku,
+          ...variantInfo,
         },
         quantity: product.quantity,
         price: finalPrice / product.quantity,

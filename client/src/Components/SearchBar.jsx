@@ -64,14 +64,14 @@ const SearchBar = ({ setQueryBarTitle, onSearch, width, TopMargin }) => {
 
   return (
     <div
-      className={`relative ${!width && "max-sm:hidden"} flex ${
+      className={`relative flex ${
         width || "w-full"
       } mx-auto justify-center ${TopMargin || ""}`}
     >
       <label htmlFor="defaultSearch" className="sr-only">
         Search
       </label>
-      <div className={`relative ${width || "w-1/2"}`}>
+      <div className={`relative ${width || "w-full sm:w-1/2"}`}>
         <form onSubmit={handleSearchClick}>
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
             <svg

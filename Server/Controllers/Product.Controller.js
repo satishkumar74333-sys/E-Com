@@ -264,6 +264,67 @@ export const ProductUpload = async (req, res, next) => {
 
       parsedBundle.discount = Number(parsedBundle.discount || 0);
 
+      // If price not provided, calculate it
+      if (!parsedBundle.price) {
+        let totalPrice = 0;
+        for (let i = 0; i < parsedBundle.products.length; i++) {
+          const item = parsedBundle.products[i];
+          if (!item.product || !item.quantity) {
+            return next(new AppError("Invalid bundle product data", 400));
+          }
+
+          // Fetch the product to check type and get price
+          const prod = await Product.findById(item.product);
+          if (!prod) {
+            return next(new AppError(`Product ${item.product} not found`, 400));
+          }
+
+          let itemPrice = 0;
+          if (prod.productType === "simple") {
+            itemPrice = prod.simpleProduct?.finalPrice || 0;
+          } else if (prod.productType === "variant") {
+            if (!item.sku) {
+              return next(new AppError("SKU required for variant products in bundle", 400));
+            }
+            const color = prod.variants?.flatMap(v => v.colors).find(c => c.sku === item.sku);
+            if (!color) {
+              return next(new AppError(`Invalid SKU ${item.sku} for product ${prod.name}`, 400));
+            }
+            itemPrice = color.finalPrice || 0;
+          } else if (prod.productType === "bundle") {
+            itemPrice = prod.bundleProducts?.finalPrice || 0;
+          }
+
+          totalPrice += itemPrice * item.quantity;
+
+          if (prod.productType !== "variant" && item.sku) {
+            return next(new AppError("SKU not allowed for non-variant products", 400));
+          }
+        }
+        parsedBundle.price = totalPrice;
+      } else {
+        // Validate products even if price is provided
+        for (let i = 0; i < parsedBundle.products.length; i++) {
+          const item = parsedBundle.products[i];
+          if (!item.product || !item.quantity) {
+            return next(new AppError("Invalid bundle product data", 400));
+          }
+
+          const prod = await Product.findById(item.product);
+          if (!prod) {
+            return next(new AppError(`Product ${item.product} not found`, 400));
+          }
+
+          if (prod.productType === "variant" && !item.sku) {
+            return next(new AppError("SKU required for variant products in bundle", 400));
+          }
+
+          if (prod.productType !== "variant" && item.sku) {
+            return next(new AppError("SKU not allowed for non-variant products", 400));
+          }
+        }
+      }
+
       const ids = parsedBundle.products.map(p => p.product);
       if (new Set(ids).size !== ids.length) {
         return next(new AppError("Duplicate product in bundle", 400));
@@ -641,11 +702,11 @@ export const getAllProduct = async (req, res, next) => {
       if (p.productType === "bundle") {
         let basePrice = 0;
         let thumbnail = "";
-
         p.bundleProducts?.products?.forEach(item => {
           const prod = item.product;
           if (!prod) return;
 
+thumbnail=p.bundleProducts.images[0].secure_url
           /* SIMPLE */
           if (prod.productType === "simple") {
             const price = Number(prod.simpleProduct?.price || 0);
@@ -826,7 +887,7 @@ export const getProductsForSelection = async (req, res, next) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 50);
     const products = await Product.find({ isActive: true })
-      .select("name productType simpleProduct.price simpleProduct.discount simpleProduct.finalPrice simpleProduct.images variants.colors.name variants.colors.price variants.colors.discount variants.colors.finalPrice variants.colors.images bundleProducts.price bundleProducts.discount bundleProducts.finalPrice bundleProducts.images")
+      .select("name productType simpleProduct.price simpleProduct.discount simpleProduct.finalPrice simpleProduct.images variants bundleProducts.price bundleProducts.discount bundleProducts.finalPrice bundleProducts.images")
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();
@@ -835,13 +896,16 @@ export const getProductsForSelection = async (req, res, next) => {
       let price = 0;
       let finalPrice = 0;
       let thumbnail = "";
+      let variants = [];
 
       if (p.productType === "simple") {
         price = p.simpleProduct?.price || 0;
         finalPrice = p.simpleProduct?.finalPrice || price;
         thumbnail = p.simpleProduct?.images?.[0]?.secure_url || "";
       } else if (p.productType === "variant") {
-        const colors = p.variants?.[0]?.colors || [];
+        variants = p.variants || [];
+        // For display, use first variant's first color
+        const colors = variants?.[0]?.colors || [];
         if (colors.length > 0) {
           price = colors[0].price || 0;
           finalPrice = colors[0].finalPrice || price;
@@ -860,6 +924,7 @@ export const getProductsForSelection = async (req, res, next) => {
         price,
         finalPrice,
         thumbnail,
+        variants,
       };
     });
 

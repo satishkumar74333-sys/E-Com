@@ -9,16 +9,20 @@ import { GiShoppingCart } from "react-icons/gi";
 import {
   FaBell,
   FaBlog,
+  FaBox,
   FaBoxOpen,
+  FaCreditCard,
+  FaEnvelope,
   FaMagnifyingGlass,
   FaMoon,
+  FaSellcast,
   FaSun,
   FaUser,
 } from "react-icons/fa6";
 import { useDispatch, useSelector } from "react-redux";
 import Footer from "../Components/footer";
 import LoadingButton from "../constants/LoadingBtn";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   getShopInfo,
   LoadAccount,
@@ -31,16 +35,17 @@ import SearchBar from "../Components/SearchBar";
 import {
   MdOutlineAdminPanelSettings,
   MdOutlineContactPage,
+  MdSettings,
   MdSpaceDashboard,
 } from "react-icons/md";
 import { BsArrowsCollapse, BsCloudUpload } from "react-icons/bs";
 import toast from "react-hot-toast";
+import { Upload } from "lucide-react";
 
 function Layout({ children, load }) {
   const [loading, setLoading] = useState("");
   const [NotificationShow, setNotificationShow] = useState(false);
   const [notification, setNotification] = useState([]);
-  const [isDrawer, setDrawer] = useState(false);
   const { darkMode, toggleDarkMode } = useTheme();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -50,19 +55,6 @@ function Layout({ children, load }) {
   const { phoneNumber, email, address, instagram, youtube, facebook } =
     useSelector((state) => state?.ShopInfo);
 
-  function changeWight() {
-    const drawerSide = document.getElementsByClassName("drawer-side");
-    drawerSide[0].style.width = "auto";
-    setDrawer(true);
-  }
-
-  function hideSide() {
-    const element = document.getElementsByClassName("drawer-toggle");
-    element[0].checked = false;
-    setDrawer(false);
-    const drawerSide = document.getElementsByClassName("drawer-side");
-    drawerSide[0].style.width = "0";
-  }
 
   const handelLogout = async (e) => {
     e.preventDefault();
@@ -122,6 +114,12 @@ function Layout({ children, load }) {
       )
     );
   };
+
+  function hideSide() {
+    if (window.innerWidth > 1024) return;
+    const element = document.getElementsByClassName("drawer-toggle");
+    element[0].checked = false;
+  }
   useEffect(() => {
     const currentTimestamp = Math.floor(Date.now() / 1000);
 
@@ -139,6 +137,24 @@ function Layout({ children, load }) {
   useEffect(() => {
     handelNotificationLoad();
   }, []);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const element = document.getElementsByClassName("drawer-toggle");
+      if (element[0]) {
+        if (window.innerWidth >= 1024) {
+          element[0].checked = true;
+        } else {
+          element[0].checked = false;
+        }
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
 
   useEffect(() => {
     const checkNetworkSpeed = () => {
@@ -176,218 +192,227 @@ function Layout({ children, load }) {
 
   return (
     <div
-      className={`min-h-[90vh] select-none z-20 bg-white dark:text-white  dark:bg-gray-900 text-black  overflow-hidden `}
+      className={`min-h-screen z-20 bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 text-black dark:text-white`}
     >
       <div className="sticky top-0 z-50">
-        <nav
-          className={`flex fixed z-50 justify-between w-[100%] items-center bg-white   dark:bg-gray-900 `}
-        >
-          <label htmlFor="my-drawer" className="relative cursor-pointer">
-            <FiMenu
-              onClick={changeWight}
-              size={"36px"}
-              className={`font-bold dark:text-white text-gray-800 m-4 `}
-            />
-          </label>
-          {!load && <SearchBar onSearch={handleSearch} />}
-          <div
-            className={`flex gap-5 font-bold text-black dark:text-white items-center `}
-          >
-            <div className="max-sm:hidden flex">
-              {!isLoggedIn && (
-                <Link to="/Login">
-                  <button
-                    className={` text-sm px-8 bg-blue-700 dark:bg-blue-600 py-3 font-medium text-white rounded-md w-full hover:bg-transparent hover:text-blue-700 hover:border-2`}
-                  >
-                    Login
-                  </button>
-                </Link>
+        {/* Modern Header */}
+        <header className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-700">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              {/* Logo and Mobile Menu */}
+              <div className="flex items-center">
+                <label htmlFor="my-drawer" className="lg:hidden relative cursor-pointer p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <FiMenu size={24} className="text-gray-700 dark:text-gray-300" />
+                </label>
+                <div className="hidden lg:block ml-4">
+                  <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    KGS DOORS
+                  </Link>
+                </div>
+              </div>
+
+              {/* Desktop Navigation */}
+              {!["ADMIN", "AUTHOR"].includes(role) && (
+                <nav className="hidden lg:flex space-x-8">
+                  <Link to="/" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Home</Link>
+                  <Link to="/Product" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Products</Link>
+                  <Link to="/Blog" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Blog</Link>
+                  <Link to="/Contact" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Contact</Link>
+                  <Link to="/About" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">About</Link>
+                </nav>
               )}
-            </div>
-            <div className=" relative cursor-pointer hover:text-green-400 dark:text-white">
-              <FaBell
-                size={"20px"}
-                onClick={() => toggleNotificationSidebar()}
-              />
-              <p className="absolute text-green-600 font-serif text-sm top-[-12px] right-[-5px]">
-                {notification &&
-                  notification?.length >= 1 &&
-                  notification?.length}
-              </p>
-            </div>
-            <Link to="/Search">
-              <div className="cursor-pointer dark:text-white sm:hidden">
-                <FaMagnifyingGlass size={"20px"} />
+              {["ADMIN", "AUTHOR"].includes(role) && (
+                <nav className="hidden lg:flex space-x-6">
+                  <Link to="/DashBoard" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Dashboard</Link>
+                  <Link to="/Users" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Users</Link>
+                  <Link to="/Orders" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Orders</Link>
+                  <Link to="/ProductsAdmin" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Products</Link>
+                  <Link to="/Payments" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Payments</Link>
+                </nav>
+              )}
+
+              {/* Search Bar - Always Visible */}
+              <div className="flex-1 max-w-md mx-4 hidden md:block">
+                <SearchBar onSearch={handleSearch} />
               </div>
-            </Link>
 
-            {isLoggedIn && (
-              <div className="cursor-pointer hover:text-green-400 dark:text-white">
-                <FaUser size={"20px"} onClick={() => navigate("/Profile")} />
+              {/* User Actions */}
+              <div className="flex items-center space-x-4">
+                {/* Notifications */}
+                <button
+                  onClick={toggleNotificationSidebar}
+                  className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <FaBell size={20} className="text-gray-700 dark:text-gray-300" />
+                  {notification && notification.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {notification.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dark Mode Toggle */}
+                <button
+                  onClick={toggleDarkMode}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  {darkMode ? <FaSun size={20} className="text-yellow-500" /> : <FaMoon size={20} className="text-gray-700 dark:text-gray-300" />}
+                </button>
+
+                {/* User Menu */}
+                {isLoggedIn ? (
+                  <div className="relative group">
+                    <button className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <FaUser size={20} className="text-gray-700 dark:text-gray-300" />
+                    </button>
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                      <Link to="/Profile" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Profile</Link>
+                      {!["ADMIN", "AUTHOR"].includes(role) && (
+                        <Link to="/Cart" className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Cart</Link>
+                      )}
+                      <button onClick={handelLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700">Logout</button>
+                    </div>
+                  </div>
+                ) : (
+                  <Link to="/Login">
+                    <button className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-full font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105">
+                      Login
+                    </button>
+                  </Link>
+                )}
+
+                {/* Cart Icon - Desktop */}
+                {!["ADMIN", "AUTHOR"].includes(role) && (
+                  <button
+                    onClick={() => navigate("/Cart")}
+                    className="relative p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <GiShoppingCart size={24} className="text-gray-700 dark:text-gray-300" />
+                    {data?.walletAddProducts?.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {data.walletAddProducts.length}
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
-            )}
+            </div>
 
-            <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded text-black dark:text-white`}
-            >
-              {darkMode ? <FaSun size={20} /> : <FaMoon size={20} />}
-            </button>
-
-            <div
-              onClick={() => navigate("/Cart")}
-              className="relative cursor-pointer text-white mr-4 dark:text-black"
-            >
-              <p className="absolute text-green-600 font-serif text-sm top-[-12px] right-[-5px]">
-                {data?.walletAddProducts?.length >= 1 &&
-                  data?.walletAddProducts?.length}
-              </p>
-              <GiShoppingCart
-                size={"20px"}
-                className={`${
-                  data?.walletAddProducts?.length >= 1
-                    ? `text-green-400`
-                    : `text-black dark:text-white`
-                }`}
-              />
+            {/* Mobile Search */}
+            <div className="md:hidden pb-4">
+              <SearchBar onSearch={handleSearch} />
             </div>
           </div>
-        </nav>
-        <div className="drawer absolute left-0 z-50 w-fit">
-          <input className="drawer-toggle" id="my-drawer" type="checkbox" />
-          <div className={`drawer-side w-0 `}>
+        </header>
+        {/* Sidebar for Desktop */}
+        {["ADMIN", "AUTHOR"].includes(role) && (
+          <div className="hidden lg:block fixed left-0 top-16 h-full w-64 bg-white dark:bg-gray-900 shadow-lg border-r border-gray-200 dark:border-gray-700 z-30">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-bold text-gray-800 dark:text-white">Admin Panel</h2>
+            </div>
+            <nav className="p-4 space-y-2">
+              <Link to="/DashBoard" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <MdSpaceDashboard />
+                <span>Dashboard</span>
+              </Link>
+              <Link to="/Users" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <FaUser />
+                <span>Users</span>
+              </Link>
+              <Link to="/up-sell" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <FaSellcast />
+                <span>up sell</span>
+              </Link>
+              <Link to="/AddProduct" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <Upload />
+                <span>AddProduct</span>
+              </Link>
+              <Link to="/Orders" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <FaBox />
+                <span>Orders</span>
+              </Link>
+              <Link to="/ProductsAdmin" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <FaBoxOpen />
+                <span>Products</span>
+              </Link>
+              <Link to="/Payments" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <FaCreditCard />
+                <span>Payments</span>
+              </Link>
+              <Link to="/Messages" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <FaEnvelope />
+                <span>Messages</span>
+              </Link>
+              <Link to="/Settings" className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                <MdSettings />
+                <span>Settings</span>
+              </Link>
+            </nav>
+          </div>
+        )}
+
+        {/* Mobile Drawer */}
+        <div className="drawer lg:hidden">
+          <input id="my-drawer" type="checkbox" className="drawer-toggle" />
+          <div className="drawer-side z-40">
             <label htmlFor="my-drawer" className="drawer-overlay"></label>
-            <ul
-              className={`menu p-4 w-56 bg-base-200 text-base-content dark:bg-gray-800 dark:text-gray-300 min-h-[100%] sm:w-80 space-y-4  max-w-xs:space-y-2 relative overflow-y-auto `}
-            >
-              <li className="w-fit absolute right-2 z-50">
-                <button onClick={hideSide}>
-                  <AiFillCloseCircle size={"20px"} />
-                </button>
-              </li>
-              <li onClick={hideSide} className="pt-2">
-                <Link to="/">
-                  {" "}
-                  <AiFillHome />
-                  Home
-                </Link>
-              </li>
-
-              <li onClick={hideSide}>
-                <Link to="/Product">
-                  {" "}
-                  <FaBoxOpen />
-                  All Product
-                </Link>
-              </li>
-              <li onClick={hideSide}>
-                <Link to="/Blog">
-                  {" "}
-                  <FaBlog />
-                  Blog
-                </Link>
-              </li>
-
-              <li onClick={hideSide}>
-                <Link to="/Contact">
-                  {" "}
-                  <MdOutlineContactPage />
-                  Contact Us
-                </Link>
-              </li>
-              <li onClick={hideSide}>
-                <Link to="/About">
-                  {" "}
-                  <AiOutlineInfoCircle />
-                  About Us
-                </Link>
-              </li>
-
-              {["ADMIN", "AUTHOR"].includes(role) && (
-                <>
-                  <p className="flex items-center gap-1 text-xm">
-                    <MdOutlineAdminPanelSettings size={20} /> Admin Routes
-                  </p>
-                  <li onClick={hideSide}>
-                    <Link
-                      to={`/DashBoard/${
-                        data?._id || "67816211921701ac1e5a5c1d"
-                      }`}
-                    >
-                      <MdSpaceDashboard />
-                      ADMIN Dashboard
-                    </Link>
-                  </li>
-                  <li onClick={hideSide}>
-                    <Link to="/AddProduct">
-                      {" "}
-                      <BsCloudUpload />
-                      Add Product
-                    </Link>
-                  </li>
-                  <li onClick={hideSide}>
-                    <Link to="/CarouselUpdate">
-                      {" "}
-                      <BsArrowsCollapse />
-                      Carousel Update
-                    </Link>
-                  </li>
-                  <li onClick={hideSide}>
-                    <Link to="/CarouselUpload">
-                      {" "}
-                      <BsCloudUpload />
-                      CarouselUpload
-                    </Link>
-                  </li>
-                  <li onClick={hideSide}>
-                    <Link to="/BlogUpload ">
-                      {" "}
-                      <BsCloudUpload />
-                      BlogUpload
-                    </Link>
-                  </li>
-                </>
-              )}
-              {!isLoggedIn && (
-                <li className="w-[90%]  absolute bottom-4">
-                  <div className="flex mt-2 items-center justify-center w-full flex-wrap">
-                    <Link to="/Login">
-                      <button className="btn btn-primary px-8 py-1 rounded-md font-semibold w-full">
-                        Login
-                      </button>
-                    </Link>
-                    <Link to="/SignUp">
-                      <button className="btn btn-secondary px-8 py-1 rounded-md font-semibold w-full">
-                        SignUp
-                      </button>
-                    </Link>
-                  </div>
-                </li>
-              )}
-
-              {isLoggedIn && (
-                <div className="w-[90%]  absolute bottom-4">
-                  <div className="flex items-center justify-center w-full flex-wrap">
-                    <LoadingButton
-                      textSize={"py-2"}
-                      loading={loading}
-                      message={"Loading.."}
-                      onClick={handelLogout}
-                      name={"Logout"}
-                      color={"bg-red-500"}
-                    />
-                  </div>
+            <aside className="min-h-full w-80 bg-white dark:bg-gray-900 shadow-xl">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white">Menu</h2>
+                  <label htmlFor="my-drawer" className="btn btn-ghost btn-circle">
+                    <AiFillCloseCircle size={24} />
+                  </label>
                 </div>
-              )}
-            </ul>
+              </div>
+              <ul className="menu p-4 space-y-2">
+                {!["ADMIN", "AUTHOR"].includes(role) && (
+                  <>
+                    <li><Link to="/" className="flex items-center space-x-3"><AiFillHome /><span>Home</span></Link></li>
+                    <li><Link to="/Product" className="flex items-center space-x-3"><FaBoxOpen /><span>Products</span></Link></li>
+                    <li><Link to="/Blog" className="flex items-center space-x-3"><FaBlog /><span>Blog</span></Link></li>
+                    <li><Link to="/Contact" className="flex items-center space-x-3"><MdOutlineContactPage /><span>Contact</span></Link></li>
+                    <li><Link to="/About" className="flex items-center space-x-3"><AiOutlineInfoCircle /><span>About</span></Link></li>
+                  </>
+                )}
+                {["ADMIN", "AUTHOR"].includes(role) && (
+                  <>
+                    <li className="menu-title"><MdOutlineAdminPanelSettings className="mr-2" />Admin Panel</li>
+                    <li><Link to="/DashBoard"><MdSpaceDashboard className="mr-2" />Dashboard</Link></li>
+                    <li><Link to="/AddProduct"><BsCloudUpload className="mr-2" />Add Product</Link></li>
+                    <li><Link to="/up-sell"><FaSellcast className="mr-2" />Up Sell Manage</Link></li>
+                    <li><Link to="/CarouselUpdate"><BsArrowsCollapse className="mr-2" />Carousel Update</Link></li>
+                    <li><Link to="/CarouselUpload"><BsCloudUpload className="mr-2" />Carousel Upload</Link></li>
+                    <li><Link to="/BlogUpload"><BsCloudUpload className="mr-2" />Blog Upload</Link></li>
+                    <li><Link to="/Users"><FaUser className="mr-2" />Users</Link></li>
+                    <li><Link to="/Orders"><FaBox className="mr-2" />Orders</Link></li>
+                    <li><Link to="/ProductsAdmin"><FaBoxOpen className="mr-2" />Products</Link></li>
+                    <li><Link to="/Payments"><FaCreditCard className="mr-2" />Payments</Link></li>
+                    <li><Link to="/Messages"><FaEnvelope className="mr-2" />Messages</Link></li>
+                    <li><Link to="/Settings"><MdSettings className="mr-2" />Settings</Link></li>
+                  </>
+                )}
+              </ul>
+              <div className="absolute bottom-4 left-4 right-4">
+                {!isLoggedIn ? (
+                  <div className="space-y-2">
+                    <Link to="/Login" className="btn btn-primary w-full">Login</Link>
+                    <Link to="/Signup" className="btn btn-outline w-full">Sign Up</Link>
+                  </div>
+                ) : (
+                  <LoadingButton
+                    textSize="py-2"
+                    loading={loading}
+                    message="Logging out..."
+                    onClick={handelLogout}
+                    name="Logout"
+                    color="bg-red-500"
+                  />
+                )}
+              </div>
+            </aside>
           </div>
         </div>
-        {isDrawer && (
-          <div
-            className="fixed inset-0 w-full bg-black bg-opacity-30 z-10"
-            onClick={hideSide}
-          ></div>
-        )}
         {NotificationShow && (
           <div
             className="fixed inset-0 bg-black bg-opacity-30 z-10"
@@ -436,10 +461,18 @@ function Layout({ children, load }) {
           </div>
         </div>
       </div>
-      <div className=" mt-16">{children}</div>
+
+      {/* Main Content */}
+      <main className={`pt-4 pb-8 min-h-[calc(100vh-4rem)] overflow-auto ${["ADMIN", "AUTHOR"].includes(role) ? "lg:ml-64" : ""}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {children}
+        </div>
+      </main>
+
       <Footer />
     </div>
   );
 }
 
 export default Layout;
+

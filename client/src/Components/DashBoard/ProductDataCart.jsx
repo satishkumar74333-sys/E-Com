@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { updateProduct } from "../../Redux/Slice/ProductSlice";
+import { updateProduct, DeleteProduct } from "../../Redux/Slice/ProductSlice";
 import { formatPrice } from "../../Page/Product/format";
 import { FiEdit } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { AiOutlineDelete } from "react-icons/ai";
+import toast from "react-hot-toast";
 
 export const ProductsCart = ({
   products,
@@ -126,9 +127,9 @@ export const ProductsCart = ({
                       }
                       className="p-2 w-20 h-20 rounded-xl cursor-pointer"
                       src={
-                        product?.image?.secure_url
-                          ? product?.image?.secure_url
-                          : product?.images[0]?.secure_url
+                        product?.image?.secure_url ||
+                        (product?.images && product?.images[0]?.secure_url) ||
+                        'https://via.placeholder.com/150'
                       }
                       crossOrigin="anonymous"
                       alt={product.name}
@@ -162,12 +163,6 @@ export const ProductsCart = ({
                   <td className="text-center">{formatPrice(totalPrice)}</td>
 
                   <td className="p-2 flex gap-2">
-                    <button
-                      className="bg-red-500 text-white px-4 py-1 rounded"
-                      onClick={() => handleDeleteProduct(product._id)}
-                    >
-                      <AiOutlineDelete className="w-7 h-7 max-w-xs:w-5" />
-                    </button>
                     <button
                       className=" bg-green-500 text-white px-4 py-1  rounded"
                       onClick={() =>

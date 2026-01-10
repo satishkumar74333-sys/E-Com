@@ -94,12 +94,14 @@ function ProductDescription() {
     let price = 0,
       finalPrice = 0,
       discount = 0;
+    const gst = productData?.gst || 0;
 
     if (productData.productType === "simple") {
       price = productData.simpleProduct?.price || 0;
       discount = productData.simpleProduct?.discount || 0;
-      finalPrice =
-        price - Math.round((price * discount) / 100);
+      const gstAmount = (price * gst) / 100;
+      const priceWithGst = price + gstAmount;
+      finalPrice = priceWithGst - Math.round((priceWithGst * discount) / 100);
     }
 
     if (productData.productType === "variant") {
@@ -107,14 +109,18 @@ function ProductDescription() {
       if (colorData) {
         price = colorData.price || 0;
         discount = colorData.discount || 0;
-        finalPrice = price - Math.round((price * discount) / 100);
+        const gstAmount = (price * gst) / 100;
+        const priceWithGst = price + gstAmount;
+        finalPrice = priceWithGst - Math.round((priceWithGst * discount) / 100);
       }
     }
 
     if (productData.productType === "bundle") {
       price = bundlePrice;
       discount = bundleDiscount;
-      finalPrice = price - Math.round((price * discount) / 100);
+      const gstAmount = (price * gst) / 100;
+      const priceWithGst = price + gstAmount;
+      finalPrice = priceWithGst - Math.round((priceWithGst * discount) / 100);
     }
 
     return {
@@ -164,11 +170,15 @@ function ProductDescription() {
           // Calculate bundle price and stock
           let totalPrice = 0;
           let isOutOfStock = false;
+          const gst = productData?.gst || 0;
           bundled.forEach(p => {
             if (p.productType === "simple") {
               const price = p.simpleProduct?.price || 0;
               const discount = p.simpleProduct?.discount || 0;
-              totalPrice += price - Math.round((price * discount) / 100);
+              const gstAmount = (price * gst) / 100;
+              const priceWithGst = price + gstAmount;
+              const final = priceWithGst - Math.round((priceWithGst * discount) / 100);
+              totalPrice += final;
               if (p.simpleProduct?.stockStatus !== "In stock") isOutOfStock = true;
             } else if (p.productType === "variant") {
               let minPrice = Infinity;
@@ -176,7 +186,9 @@ function ProductDescription() {
               p.variants?.forEach(v => v.colors?.forEach(c => {
                 const price = c.price || 0;
                 const discount = c.discount || 0;
-                const final = price - Math.round((price * discount) / 100);
+                const gstAmount = (price * gst) / 100;
+                const priceWithGst = price + gstAmount;
+                const final = priceWithGst - Math.round((priceWithGst * discount) / 100);
                 if (final < minPrice) minPrice = final;
                 if (c.stockQuantity > 0) hasStock = true;
               }));
@@ -507,11 +519,14 @@ function ProductDescription() {
                     let finalPrice = 0;
                     let stock = "Out of stock";
 
+                    const gst = p.gst || 0;
                     if (p.productType === "simple") {
                       image = p.simpleProduct?.images?.[0]?.secure_url;
                       price = p.simpleProduct?.price || 0;
                       discount = p.simpleProduct?.discount || 0;
-                      finalPrice = price - Math.round((price * discount) / 100);
+                      const gstAmount = (price * gst) / 100;
+                      const priceWithGst = price + gstAmount;
+                      finalPrice = priceWithGst - Math.round((priceWithGst * discount) / 100);
                       stock = p.simpleProduct?.stockStatus || "Out of stock";
                     } else if (p.productType === "variant") {
                       image = p.variants?.[0]?.colors?.[0]?.images?.[0]?.secure_url;
@@ -519,14 +534,18 @@ function ProductDescription() {
                       if (firstColor) {
                         price = firstColor.price || 0;
                         discount = firstColor.discount || 0;
-                        finalPrice = price - Math.round((price * discount) / 100);
+                        const gstAmount = (price * gst) / 100;
+                        const priceWithGst = price + gstAmount;
+                        finalPrice = priceWithGst - Math.round((priceWithGst * discount) / 100);
                         stock = firstColor.stockStatus || "Out of stock";
                       }
                     } else if (p.productType === "bundle") {
                       image = p.bundleProducts?.images?.[0]?.secure_url;
                       price = p.bundleProducts?.price || 0;
                       discount = p.bundleProducts?.discount || 0;
-                      finalPrice = price - Math.round((price * discount) / 100);
+                      const gstAmount = (price * gst) / 100;
+                      const priceWithGst = price + gstAmount;
+                      finalPrice = priceWithGst - Math.round((priceWithGst * discount) / 100);
                       stock = "In stock";
                     }
 
@@ -580,56 +599,7 @@ function ProductDescription() {
         </div>
       </div>
 
-      {/* ================= FREQUENTLY BOUGHT TOGETHER ================= */}
-      {relatedProducts.length > 1 && (
-        <div className="container mx-auto px-4 mt-12">
-          <h2 className="text-3xl font-bold mb-8 text-gray-900 dark:text-gray-100 text-center">Frequently Bought Together</h2>
-          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg">
-            <div className="flex flex-col lg:flex-row items-center justify-center gap-6 mb-8">
-              <div className="text-center flex-shrink-0">
-                <img src={productInfo.images[0]?.secure_url} alt={productData.name} className="w-24 h-24 object-cover rounded-lg mx-auto mb-3 shadow-md" />
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{productData.name}</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatPrice(productInfo.finalPrice)}</p>
-              </div>
-              <span className="text-3xl text-gray-400 font-bold">+</span>
-              {relatedProducts.slice(0, 2).map((p, i) => {
-                const price = Number(p.finalPrice || p.price || 0);
-                return (
-                  <div key={p._id}>
-                    <span className="text-3xl text-gray-400 font-bold">+</span>
-                    <div className="text-center flex-shrink-0 ml-6">
-                      <img src={p.images?.[0]?.secure_url || p.thumbnail} alt={p.name} className="w-24 h-24 object-cover rounded-lg mx-auto mb-3 shadow-md" />
-                      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{p.name}</p>
-                      <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatPrice(price)}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="text-center sm:text-left">
-                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                    Total: {formatPrice(
-                      Number(productInfo.finalPrice || 0) +
-                      relatedProducts.slice(0, 2).reduce((sum, p) => sum + Number(p.finalPrice || p.price || 0), 0)
-                    )}
-                  </p>
-                  <p className="text-lg text-green-600 dark:text-green-400 font-semibold">Save 15% when bought together</p>
-                </div>
-                <button
-                  onClick={handleAddAllToCart}
-                  disabled={loading}
-                  className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-8 py-4 rounded-lg transition-colors font-bold text-lg shadow-lg w-full sm:w-auto"
-                >
-                  {loading ? "Adding..." : "Add All to Cart"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+    
       {/* ================= RELATED ================= */}
       {relatedProducts.length > 0 && (
         <div className="container mx-auto px-4 mt-16">

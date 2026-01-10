@@ -4,6 +4,7 @@ import {
   createOrUpdateUpsell,
   deleteUpsell,
   calculateCartUpsellSavings,
+  getCartUpsellSuggestions,
 } from "../Controllers/Upsell.Controller.js";
 import { isLoggedIn, authorizeRoles } from "../Middleware/authMiddleware.js";
 
@@ -11,6 +12,7 @@ const router = express.Router();
 
 // Get upsell for a product
 router.post('/calculate-cart-upsell', calculateCartUpsellSavings);
+router.post('/cart-suggestions', getCartUpsellSuggestions);
 router.get("/:productId", getUpsellByProduct);
 
 // Create or update upsell for a product (admin only)

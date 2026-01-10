@@ -10,7 +10,6 @@ const ThankYou = () => {
   const { state } = useLocation();
   const data = state?.data;
   const navigate = useNavigate();
-  console.log(state)
   useEffect(() => {
     if (!data || data == undefined) {
       navigate(-1);
@@ -50,8 +49,11 @@ const ThankYou = () => {
             Order Details
           </h2>
           {data.products.map((product, ind) => {
+
             return (
+              
               <div key={ind} className="mb-6">
+               
                 <h1 className="pl-4 py-2 font-bold">Order #{ind + 1}</h1>
                 <table
                   key={ind}
@@ -74,18 +76,7 @@ const ThankYou = () => {
                         {product.productDetails.name} × {product.quantity}
                       </td>
                       <td className="border font-bold border-gray-300 px-4 py-2 text-right">
-                        {formatPrice(
-                          product.productDetails.price +
-                            (product.productDetails.price *
-                              product.productDetails.gst) /
-                              100 -
-                            ((product.productDetails.price +
-                              (product.productDetails.price *
-                                product.productDetails.gst) /
-                                100) *
-                              product.productDetails?.discount || 0) /
-                              100
-                        )}
+                        {formatPrice(product.finalPrice || product.productDetails.price)}
                       </td>
                     </tr>
                     <tr>
@@ -93,19 +84,7 @@ const ThankYou = () => {
                         Subtotal:
                       </td>
                       <td className="border border-gray-300 px-4 py-2 text-right font-bold">
-                        {formatPrice(
-                          product.productDetails.price +
-                            (product.productDetails.price *
-                              product.productDetails.gst) /
-                              100 -
-                            (((product.productDetails.price +
-                              (product.productDetails.price *
-                                product.productDetails.gst) /
-                                100) *
-                              product.productDetails?.discount || 0) /
-                              100) *
-                              product.quantity
-                        )}
+                        {formatPrice((product.finalPrice || product.productDetails.price) * product.quantity)}
                       </td>
                     </tr>
                     <tr>

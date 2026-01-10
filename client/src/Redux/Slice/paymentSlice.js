@@ -57,7 +57,7 @@ export const getPaymentRecord = createAsyncThunk(
       const token = localStorage.getItem("Authenticator");
 
       const response = await axiosInstance.get(
-        "/api/v3/Admin/Payment?count=100",
+        "/api/v3/Admin/Payment?count=10",
         {
           headers: {
             Authorization: `${token}`,

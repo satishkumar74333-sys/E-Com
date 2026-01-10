@@ -15,6 +15,7 @@ const OrderDetails = () => {
     try {
       setLoading(true);
       const data = await dispatch(getOrderById(orderId));
+      console.log(data)
       setOrderDetails(data?.payload?.data);
     } finally {
       setLoading(false);
@@ -97,8 +98,11 @@ const OrderDetails = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Product
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      SKU
+                    </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Price
+                      Unit Price
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Quantity
@@ -110,28 +114,36 @@ const OrderDetails = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {orderDetails.products.map((product) => (
-                    <tr key={product._id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <img
-                          src={product.productDetails.image.secure_url}
-                          alt={product.productDetails.name}
-                          className="w-20"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {product.productDetails.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        ₹{product.productDetails.price.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {product.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                        ₹{(product.price * product.quantity).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
+                     <tr key={product._id}>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                         <img
+                           src={product.productDetails?.image?.[0]?.secure_url || ""}
+                           alt={product.productDetails.name}
+                           className="w-20"
+                         />
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                         {product.productDetails.name}
+                         {product.productDetails.variant && (
+                           <div className="text-xs text-gray-500">
+                             Size: {product.productDetails.variant}, Color: {product.productDetails.color}
+                           </div>
+                         )}
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                         {product.productDetails.sku}
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                         ₹{(product.price || product.productDetails.price).toLocaleString()}
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                         {product.quantity}
+                       </td>
+                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                         ₹{(product.price * product.quantity).toLocaleString()}
+                       </td>
+                     </tr>
+                   ))}
                 </tbody>
               </table>
             </div>

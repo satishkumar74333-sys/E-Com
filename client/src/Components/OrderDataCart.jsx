@@ -359,7 +359,7 @@ export const OrderCart = ({ order }) => {
     );
   }
   return (
-    <div className=" flex  flex-col justify-center">
+    <div className="flex flex-col">
       <select
         onChange={handleFilterChange}
         value={selectedStatus}
@@ -371,8 +371,7 @@ export const OrderCart = ({ order }) => {
         <option value="Delivered">Delivered</option>
         <option value="Canceled">Canceled</option>
       </select>{" "}
-      <div className="flex flex-wrap gap-1">
-        {filteredOrders?.length == 0 ? (
+      {filteredOrders?.length == 0 ? (
           <div className="flex justify-center w-full items-center gap-10 mt-2 flex-col mb-10">
             <h1 className="text-center dark:text-white"> NO order....</h1>
             {!["ADMIN", "AUTHOR"].includes(Role) && (
@@ -387,201 +386,76 @@ export const OrderCart = ({ order }) => {
             )}
           </div>
         ) : (
-          filteredOrders?.map((order, index) => (
-            <div
-              key={index}
-              className="bg-white dark:bg-[#111827] sm:w-[45%] dark:text-white shadow-[0_0_2px_black] mt-2 rounded-lg p-6 max-w-2xl mx-auto mb-4 flex flex-col"
-            >
-              <h2 className="text-lg flex justify-between dark:text-white font-semibold mb-4 max-sm:text-sm gap-2">
-                Order ID: {order._id}
-                {orderStats[order._id] === "Canceled" ? (
-                  <p className="text-red-500 text-sm cursor-pointer hover:underline">
-                    Canceled
-                  </p>
-                ) : Role == "ADMIN" || Role == "AUTHOR" ? (
-                  <div className="flex gap-1">
-                    <FiEdit
-                      onClick={() => {
-                        setOrderId(order._id);
-                        setEditShow(true);
-                      }}
-                      size={26}
-                      className="cursor-pointer text-red-400 hover:text-red-300"
-                    />
-                    <AiOutlinePrinter
-                      onClick={() => (
-                        setShowPrint(true), setOrderPrintData(order)
-                      )}
-                      size={26}
-                      className="text-blue-500 cursor-pointer"
-                    />
-                  </div>
-                ) : (
-                  <p
-                    className="text-red-500 text-sm cursor-pointer hover:underline"
-                    onClick={() => handelOrderCancel(order._id)}
-                  >
-                    Cancel
-                  </p>
-                )}
-              </h2>
-              {/* Products Section */}
-              {order.products.map((product, productIndex) => (
-                <div key={productIndex} className="flex space-x-4 mb-4">
-                  <img
-                    title="product"
-                    onClick={() =>
-                      window.open(`/product/${product.product}`, "_blank")
+          <div className="overflow-x-auto max-h-[60vh] overflow-y-auto">
+            <table className="min-w-full bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-4 py-2 text-left">Order ID</th>
+                <th className="px-4 py-2 text-left">Customer</th>
+                <th className="px-4 py-2 text-left">Products</th>
+                <th className="px-4 py-2 text-left">Total</th>
+                <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 text-left">Payment</th>
+                <th className="px-4 py-2 text-left">Delivery Date</th>
+                <th className="px-4 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders?.map((order, index) => (
+                <tr key={index} className="border-b dark:border-gray-600">
+                  <td className="px-4 py-2">{order._id}</td>
+                  <td className="px-4 py-2">{order.shippingAddress?.name}</td>
+                  <td className="px-4 py-2">
+                    {order.products.length === 1
+                      ? order.products[0]?.productDetails?.name || 'Unknown Product'
+                      : `${order.products[0]?.productDetails?.name || 'Unknown Product'} +${order.products.length - 1} more`
                     }
-                    src={product?.productDetails?.image?.secure_url}
-                    alt={product.productDetails.name}
-                    className="w-24 h-24 object-contain rounded cursor-pointer"
-                  />
-                  <div>
-                    <h2 className="text-lg font-semibold dark:text-white">
-                      {product.productDetails.name}
-                    </h2>
-                    <p className="text-gray-500 dark:text-white flex items-center">
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center">
                       <MdCurrencyRupee />
-                      {product.productDetails.price.toFixed(2)}
-                    </p>
-                    <p className="text-gray-500 text-sm dark:text-white">
-                      Quantity: {product.quantity}
-                    </p>
-                    <p className="mt-2 text-gray-700 dark:text-white w-[100px] line-clamp-1">
-                      {product.productDetails.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {/* Delivery and Order Details */}
-              <div className="mt-6 sm:grid grid-cols-2 gap-4 dark:text-white">
-                <div>
-                  <h3 className="text-sm font-bold mb-2 dark:text-white">
-                    Delivery Address
-                  </h3>
-                  <div className="text-gray-700 max-sm:py-3 dark:text-white">
-                    <p className="text-sm">{order.shippingAddress?.name}</p>
-                    <p className="text-sm">
-                      {order.shippingAddress?.address},{" "}
-                      {order.shippingAddress?.city}
-                    </p>
-                    <p className="text-sm">
-                      {order.shippingAddress?.state},{" "}
-                      {order.shippingAddress?.postalCode}
-                    </p>
-                    <a
-                      className="text-sm"
-                      href={`tel:+${order.shippingAddress?.phoneNumber}`}
-                    >
-                      {order.shippingAddress?.phoneNumber}
-                    </a>
-                    <br />
-                    <a
-                      className=" text-[11px]"
-                      href={`mailto:${order.shippingAddress?.email}`}
-                    >
-                      {order.shippingAddress?.email}
-                    </a>
-
-                    {Role === "USER" && (
-                      <p
-                        onClick={() => {
-                          setOrderId(order._id);
-                          setShow(true);
-                        }}
-                        className="text-sm text-blue-600 hover:underline cursor-pointer"
+                      {order.totalAmount.toFixed(2)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2">{order.orderStats}</td>
+                  <td className="px-4 py-2">{order.paymentStatus}</td>
+                  <td className="px-4 py-2">{new Date(order.deliveryDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-2">
+                    {orderStats[order._id] === "Canceled" ? (
+                      <span className="text-red-500">Canceled</span>
+                    ) : Role == "ADMIN" || Role == "AUTHOR" ? (
+                      <div className="flex gap-2">
+                        <FiEdit
+                          onClick={() => {
+                            setOrderId(order._id);
+                            setEditShow(true);
+                          }}
+                          size={20}
+                          className="cursor-pointer text-red-400 hover:text-red-300"
+                        />
+                        <AiOutlinePrinter
+                          onClick={() => {
+                            setShowPrint(true);
+                            setOrderPrintData(order);
+                          }}
+                          size={20}
+                          className="cursor-pointer text-blue-500"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handelOrderCancel(order._id)}
+                        className="text-red-500 hover:underline"
                       >
-                        Edit
-                      </p>
+                        Cancel
+                      </button>
                     )}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold mb-2 dark:text-white">
-                    Order Details
-                  </h3>
-                  <p className="text-gray-700 dark:text-white">
-                    Payment Method: {order.PaymentMethod}
-                  </p>
-                  <p className="text-gray-700 dark:text-white flex items-center">
-                    Total Amount: <MdCurrencyRupee />
-                    {order.totalAmount.toFixed(2)}
-                  </p>
-                  <p className="text-gray-700 dark:text-white">
-                    Status: {order.orderStats}
-                  </p>
-                  <p className="text-gray-700 dark:text-white">
-                    Payment Status: {order.paymentStatus}
-                  </p>
-                </div>
-              </div>
-              {/* Order Progress */}
-              <div className="mt-6">
-                <div className="flex justify-between">
-                  <h3 className="text-sm text-gray-600 mb-2 dark:text-white">
-                    Order placed on{" "}
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </h3>
-                  <h3 className="text-sm text-gray-600 mb-2 dark:text-white">
-                    Order Delivery on{" "}
-                    {new Date(order.deliveryDate).toLocaleDateString()}
-                  </h3>
-                </div>
-                {orderStats[order._id] === "Canceled" ? (
-                  <p className="text-red-500 text-sm font-semibold text-center">
-                    This order has been canceled.
-                  </p>
-                ) : (
-                  <div>
-                    <div className="w-full bg-gray-200 dark:bg-black h-1 rounded-full">
-                      <div
-                        className="bg-blue-600 h-1 rounded-full"
-                        style={{
-                          width: renderOrderProgress(orderStats[order._id]),
-                        }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-600 mt-2 dark:text-white">
-                      <span className="text-blue-600 font-medium">
-                        Order placed
-                      </span>
-                      <span
-                        className={`${
-                          orderStats[order._id] === "Processing" ||
-                          orderStats[order._id] === "Shipping" ||
-                          orderStats[order._id] === "Delivered"
-                            ? "text-blue-600"
-                            : "text-black dark:text-white"
-                        } font-medium`}
-                      >
-                        Processing
-                      </span>
-                      <span
-                        className={`${
-                          orderStats[order._id] === "Shipping" ||
-                          orderStats[order._id] === "Delivered"
-                            ? "text-blue-600"
-                            : "text-black dark:text-white"
-                        } font-medium`}
-                      >
-                        Shipped
-                      </span>
-                      <span
-                        className={`${
-                          orderStats[order._id] === "Delivered"
-                            ? "text-blue-600"
-                            : "text-black dark:text-white"
-                        } font-medium mb-5`}
-                      >
-                        Delivered
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            </table>
+          </div>
         )}
         {editShow && (
           <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-70 dark:bg-opacity-80 z-50">
@@ -918,6 +792,5 @@ export const OrderCart = ({ order }) => {
           </div>
         )}
       </div>
-    </div>
   );
 };

@@ -4,8 +4,36 @@ import Upsell from "../module/Upsell.module.js";
 import { calculateUpsellDiscount } from "./Upsell.Controller.js";
 import AppError from "../utils/AppError.js";
 
+// Helper function to calculate bundle price
+const calculateBundlePrice = async (bundleProducts, gst) => {
+  let totalPrice = 0;
+  for (const item of bundleProducts.products) {
+    const product = await Product.findById(item.product);
+    if (!product) continue;
+    let price = 0;
+    if (product.productType === "simple") {
+      price = product.simpleProduct?.price || 0;
+      const discount = product.simpleProduct?.discount || 0;
+      const gstAmount = (price * gst) / 100;
+      const priceWithGst = price + gstAmount;
+      totalPrice += priceWithGst - Math.round((priceWithGst * discount) / 100);
+    } else if (product.productType === "variant") {
+      const firstColor = product.variants?.[0]?.colors?.[0];
+      if (firstColor) {
+        price = firstColor.price || 0;
+        const discount = firstColor.discount || 0;
+        const gstAmount = (price * gst) / 100;
+        const priceWithGst = price + gstAmount;
+        totalPrice += priceWithGst - Math.round((priceWithGst * discount) / 100);
+      }
+    }
+  }
+  return totalPrice;
+};
+
 // Helper function to calculate cart totals with upsell discounts
 const calculateCartTotals = async (cartItems) => {
+  console.log(cartItems)
   let subtotal = 0;
   let totalDiscount = 0;
   let upsellDiscount = 0;
@@ -20,23 +48,8 @@ const calculateCartTotals = async (cartItems) => {
     const product = await Product.findById(item.product);
     if (!product) continue;
 
-    let price = 0;
-    let stockStatus = "Out of stock";
-
-    if (product.productType === "simple") {
-      price = product.simpleProduct.finalPrice;
-      stockStatus = product.simpleProduct.stockStatus;
-    } else if (product.productType === "variant") {
-      const color = product.variants?.flatMap(v => v.colors).find(c => c.sku === item.sku);
-      if (color) {
-        price = color.finalPrice;
-        stockStatus = color.stockStatus;
-      }
-    } else if (product.productType === "bundle") {
-      // Bundles might have fixed price
-      price = product.bundleProducts?.price || 0;
-      stockStatus = "In stock"; // Virtual stock
-    }
+    let price = item.finalPrice || 0;
+    let stockStatus = item.stock || "Out of stock";
 
     // Check stock before applying discount
     if (stockStatus === "In stock") {
@@ -70,7 +83,7 @@ export const getCart = async (req, res, next) => {
     if (!user) {
       return next(new AppError("User not found", 404));
     }
-
+     console.log(user)
     const cartTotals = await calculateCartTotals(user.walletAddProducts);
 
     res.status(200).json({
@@ -83,7 +96,7 @@ export const getCart = async (req, res, next) => {
 };
 
 export const AddCardProduct = async (req, res, next) => {
-  const { productId, sku, quantity = 1 } = req.body;
+  const { productId, sku, quantity = 1, price: customPrice, gst: customGst, discount: customDiscount } = req.body;
   const { id } = req.user;
 
   if (!id || !productId || !sku) {
@@ -105,33 +118,69 @@ export const AddCardProduct = async (req, res, next) => {
       return next(new AppError("User not found.", 404));
     }
 
-    // Determine product details based on type and SKU
     let price = 0;
     let discount = 0;
     let stock = "In stock";
     let productImage = { public_id: null, secure_url: null };
+    let gst = FindProduct.gst || 0;
 
-    if (FindProduct.productType === "simple") {
-      price = FindProduct.simpleProduct?.price || 0;
-      discount = FindProduct.simpleProduct?.discount || 0;
-      stock = FindProduct.simpleProduct?.stockStatus || "In stock";
-      productImage = FindProduct.simpleProduct?.images?.[0] || { public_id: null, secure_url: null };
-    } else if (FindProduct.productType === "variant") {
-      const color = FindProduct.variants?.flatMap(v => v.colors).find(c => c.sku === sku);
-      if (color) {
-        price = color.price || 0;
-        discount = color.discount || 0;
-        stock = color.stockStatus || "In stock";
-        productImage = color.images?.[0] || { public_id: null, secure_url: null };
-      } else {
-        return next(new AppError("Product variant not found.", 404));
+    if (customPrice !== undefined) {
+      price = customPrice;
+      gst = customGst !== undefined ? customGst : gst;
+      discount = customDiscount !== undefined ? customDiscount : discount;
+      // For custom, assume stock is ok, and image from product
+      if (FindProduct.productType === "simple") {
+        stock = FindProduct.simpleProduct?.stockStatus || "In stock";
+        productImage = FindProduct.simpleProduct?.images?.[0] || { public_id: null, secure_url: null };
+      } else if (FindProduct.productType === "variant") {
+        const color = FindProduct.variants?.flatMap(v => v.colors).find(c => c.sku === sku);
+        if (color) {
+          price = color.price || 0;
+          discount = color.discount || 0;
+          stock = color.stockStatus || "In stock";
+          productImage = color.images?.[0] || { public_id: null, secure_url: null };
+          sku = color.sku;
+         
+        } else {
+          return next(new AppError("Product variant not found.", 404));
+        }
+      } else if (FindProduct.productType === "bundle") {
+        stock = "In stock";
+        productImage = FindProduct.bundleProducts?.images?.[0] || { public_id: null, secure_url: null };
       }
-    } else if (FindProduct.productType === "bundle") {
-      price = FindProduct.bundleProducts?.price || 0;
-      discount = FindProduct.bundleProducts?.discount || 0;
-      stock = "In stock"; // Virtual stock
-      productImage = FindProduct.bundleProducts?.images?.[0] || { public_id: null, secure_url: null };
+    } else {
+      if (FindProduct.productType === "simple") {
+        price = FindProduct.simpleProduct?.price || 0;
+        discount = FindProduct.simpleProduct?.discount || 0;
+        stock = FindProduct.simpleProduct?.stockStatus || "In stock";
+        productImage = FindProduct.simpleProduct?.images?.[0] || { public_id: null, secure_url: null };
+      } else if (FindProduct.productType === "variant") {
+        const color = FindProduct.variants?.flatMap(v => v.colors).find(c => c.sku === sku);
+        if (color) {
+          price = color.price || 0;
+          discount = color.discount || 0;
+          stock = color.stockStatus || "In stock";
+          productImage = color.images?.[0] || { public_id: null, secure_url: null };
+        } else {
+          return next(new AppError("Product variant not found.", 404));
+        }
+      } else if (FindProduct.productType === "bundle") {
+        price = await calculateBundlePrice(FindProduct.bundleProducts, gst);
+        discount = FindProduct.bundleProducts?.discount || 0;
+        stock = "In stock"; // Virtual stock
+        productImage = FindProduct.bundleProducts?.images?.[0] || { public_id: null, secure_url: null };
+      }
     }
+
+    // Calculate final price with GST
+    let gstAmount = (price * gst) / 100;
+    let priceWithGst = price + gstAmount;
+    if (FindProduct.productType === "bundle") {
+      // GST already included in bundle price calculation
+      gstAmount = 0;
+      priceWithGst = price;
+    }
+    const finalPrice = priceWithGst - Math.round((priceWithGst * discount) / 100);
 
     // Check stock
     if (stock !== "In stock") {
@@ -152,13 +201,15 @@ export const AddCardProduct = async (req, res, next) => {
         product: FindProduct._id,
         sku: sku,
         name: FindProduct.name,
-        gst: FindProduct.gst,
+        gst: gst,
         stock: stock,
         discount: discount,
         price: price,
+        finalPrice: finalPrice,
         description: FindProduct.description,
         productType: FindProduct.productType,
         quantity: quantity,
+      
         image: {
           public_id: productImage.public_id,
           secure_url: productImage.secure_url,

@@ -198,14 +198,14 @@ function ProductCard({ data, onProductDelete, priority = false, variant = "grid"
 
   return (
     <div className={`${cardClasses[variant]} group relative`}>
-      <div 
+      <div
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 dark:border-gray-700 overflow-hidden cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Image Section */}
         <div className="relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-600">
-          <div className="aspect-square p-3 flex items-center justify-center">
+          <div className="aspect-square p-4 flex items-center justify-center">
             <img
               src={data?.thumbnail || "/placeholder-product.jpg"}
               alt={data.name || "Product Image"}
@@ -221,20 +221,53 @@ function ProductCard({ data, onProductDelete, priority = false, variant = "grid"
           {/* Badges */}
           <div className="absolute top-3 left-3 flex flex-col space-y-1">
             {productInfo.isNew && (
-              <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-md">
+              <span className="bg-green-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-lg">
                 NEW
+              </span>
+            )}
+            {productInfo.hasDiscount && (
+              <span className="bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full shadow-lg">
+                SALE
               </span>
             )}
           </div>
 
-
+          {/* Quick Actions Overlay */}
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex space-x-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleProductClick();
+                }}
+                className="bg-white text-gray-800 p-3 rounded-full shadow-lg hover:bg-blue-500 hover:text-white transition-colors duration-200"
+                title="Quick View"
+              >
+                <FiEye size={18} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLikeDislike(data._id);
+                }}
+                className={`p-3 rounded-full shadow-lg transition-colors duration-200 ${
+                  isLike
+                    ? "bg-red-500 text-white"
+                    : "bg-white text-gray-800 hover:bg-red-500 hover:text-white"
+                }`}
+                title={isLike ? "Remove from Wishlist" : "Add to Wishlist"}
+              >
+                <FiHeart size={18} className={isLike ? "fill-current" : ""} />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Content Section */}
-        <div className="p-3">
+        <div className="p-4">
           {/* Product Name */}
-          <h3 
-            className="font-semibold text-gray-800 md:text-sm sm:text-sx  dark:text-white mb-2 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors duration-300"
+          <h3
+            className="font-semibold text-gray-800 dark:text-white mb-2 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer transition-colors duration-300 text-sm md:text-base"
             onClick={handleProductClick}
           >
             {data.name}
@@ -242,15 +275,15 @@ function ProductCard({ data, onProductDelete, priority = false, variant = "grid"
 
           {/* Category */}
           {data?.category && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-2 capitalize">
               {data.category}
             </p>
           )}
 
           {/* Price Section */}
-          <div className="mb-3">
+          <div className="mb-4">
             {data.productType === "variant" && productInfo.priceRange ? (
-              <div className="text-xl md:text-sm sm:text-sx font-bold text-gray-800 dark:text-white">
+              <div className="text-lg md:text-xl font-bold text-gray-800 dark:text-white">
                 {formatPrice(productInfo.priceRange.min)} - {formatPrice(productInfo.priceRange.max)}
                 <span className="text-sm font-normal text-gray-500 ml-1">
                   (Price Range)
@@ -258,15 +291,15 @@ function ProductCard({ data, onProductDelete, priority = false, variant = "grid"
               </div>
             ) : (
               <div className="flex items-baseline space-x-2">
-                <span className="text-xl md:text-sm sm:text-sx font-bold text-gray-800 dark:text-white">
+                <span className="text-lg md:text-xl font-bold text-gray-800 dark:text-white">
                   {formatPrice(productInfo.finalPrice)}
                 </span>
                 {productInfo.hasDiscount && (
                   <>
-                    <span className="text-sm md:text-sm sm:text-sx text-gray-500 line-through">
+                    <span className="text-sm text-gray-500 line-through">
                       {formatPrice(productInfo.originalPrice)}
                     </span>
-                    <span className="text-base md:text-sm sm:text-sx font-medium text-green-600">
+                    <span className="text-sm font-medium text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-400 px-2 py-1 rounded-full">
                       Save {formatPrice(productInfo.savings)}
                     </span>
                   </>
@@ -280,14 +313,14 @@ function ProductCard({ data, onProductDelete, priority = false, variant = "grid"
             {role === "ADMIN" || role === "AUTHOR" ? (
               <>
                 <button
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-3 rounded-md transition-colors duration-300 flex items-center justify-center space-x-1 text-sm"
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2.5 px-3 rounded-lg transition-all duration-300 flex items-center justify-center space-x-1 text-sm font-medium transform hover:scale-105"
                   onClick={() => handleDeleteProduct(data._id)}
                 >
                   <AiOutlineDelete className="w-4 h-4" />
                   <span>Delete</span>
                 </button>
                 <button
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded-md transition-colors duration-300 flex items-center justify-center space-x-1 text-sm"
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2.5 px-3 rounded-lg transition-all duration-300 flex items-center justify-center space-x-1 text-sm font-medium transform hover:scale-105"
                   onClick={() => navigate("/Admin/Edit-Product", { state: { ...data } })}
                 >
                   <FiEdit className="w-4 h-4" />
@@ -295,29 +328,17 @@ function ProductCard({ data, onProductDelete, priority = false, variant = "grid"
                 </button>
               </>
             ) : (
-              <>
-                <button
-                  className={`flex-1 py-2 px-3 rounded-md transition-all duration-300 flex items-center justify-center space-x-1 text-sm font-medium ${
-                    productExists
-                      ? "bg-green-500 hover:bg-green-600 text-white"
-                      : "bg-blue-500 hover:bg-blue-600 text-white"
-                  }`}
-                  onClick={() => handleAddToCart(data._id)}
-                >
-                  <FiShoppingCart className="w-4 h-4" />
-                  <span>{productExists ? "In Cart" : "Add to Cart"}</span>
-                </button>
-                <button
-                  className={`py-2 px-3 rounded-md transition-all duration-300 flex items-center justify-center text-sm ${
-                    isLike
-                      ? "bg-red-500 hover:bg-red-600 text-white"
-                      : "bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300"
-                  }`}
-                  onClick={() => handleLikeDislike(data._id)}
-                >
-                  <FiHeart className={`w-4 h-4 ${isLike ? "fill-current" : ""}`} />
-                </button>
-              </>
+              <button
+                className={`w-full py-2.5 px-3 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 text-sm font-medium transform hover:scale-105 ${
+                  productExists
+                    ? "bg-green-500 hover:bg-green-600 text-white shadow-lg"
+                    : "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg"
+                }`}
+                onClick={() => handleAddToCart(data._id)}
+              >
+                <FiShoppingCart className="w-4 h-4" />
+                <span>{productExists ? "In Cart" : "Add to Cart"}</span>
+              </button>
             )}
           </div>
         </div>

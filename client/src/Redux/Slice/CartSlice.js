@@ -18,7 +18,7 @@ const initialState = {
 // Thunk to add product to cart
 export const addToCart = createAsyncThunk(
   "cart/addToCart",
-  async ({ productId, sku, quantity = 1 }, { getState, dispatch }) => {
+  async ({ productId, sku, quantity = 1, customPrice, customGst, customDiscount }, { getState, dispatch }) => {
     const { auth } = getState();
     const isLoggedIn = auth.isLoggedIn;
 
@@ -26,9 +26,13 @@ export const addToCart = createAsyncThunk(
       // Add to server cart
       try {
         const token = localStorage.getItem("Authenticator");
+        const data = { productId, sku, quantity };
+        if (customPrice !== undefined) data.price = customPrice;
+        if (customGst !== undefined) data.gst = customGst;
+        if (customDiscount !== undefined) data.discount = customDiscount;
         const res = await axiosInstance.put(
           "/api/v3/Card/AddProduct",
-          { productId, sku, quantity },
+          data,
           {
             headers: {
               Authorization: `${token}`,
@@ -57,34 +61,52 @@ export const addToCart = createAsyncThunk(
         let description = product.description;
         let productType = product.productType;
         let name = product.name;
+        let colorId = null;
 
-        if (product.productType === "simple") {
-          price = product.simpleProduct?.price || 0;
-          discount = product.simpleProduct?.discount || 0;
-          imageUrl = product.simpleProduct?.images?.[0]?.secure_url || "";
-          stock = product.simpleProduct?.stockStatus || "In stock";
-        } else if (product.productType === "variant") {
-          const color = product.variants?.flatMap(v => v.colors).find(c => c.sku === sku);
-          if (color) {
-            price = color.price || 0;
-            discount = color.discount || 0;
-            imageUrl = color.images?.[0]?.secure_url || "";
-            stock = color.stockStatus || "In stock";
-          } else {
-            // If sku not found, use first color
-            const firstColor = product.variants?.[0]?.colors?.[0];
-            if (firstColor) {
-              price = firstColor.price || 0;
-              discount = firstColor.discount || 0;
-              imageUrl = firstColor.images?.[0]?.secure_url || "";
-              stock = firstColor.stockStatus || "In stock";
+        if (customPrice !== undefined) {
+          price = customPrice;
+          gst = customGst !== undefined ? customGst : gst;
+          discount = customDiscount !== undefined ? customDiscount : discount;
+        } else {
+          if (product.productType === "simple") {
+            price = product.simpleProduct?.price || 0;
+            discount = product.simpleProduct?.discount || 0;
+            imageUrl = product.simpleProduct?.images?.[0]?.secure_url || "";
+            stock = product.simpleProduct?.stockStatus || "In stock";
+          } else if (product.productType === "variant") {
+            const color = product.variants?.flatMap(v => v.colors).find(c => c.sku === sku);
+            if (color) {
+              price = color.price || 0;
+              discount = color.discount || 0;
+              imageUrl = color.images?.[0]?.secure_url || "";
+              stock = color.stockStatus || "In stock";
+              colorId = color._id;
+              // Find variantId
+              for (const variant of product.variants) {
+                if (variant.colors.some(c => c._id.toString() === colorId.toString())) {
+                  variantId = variant._id;
+                  break;
+                }
+              }
+            } else {
+              // If sku not found, use first color
+              const firstVariant = product.variants?.[0];
+              const firstColor = firstVariant?.colors?.[0];
+              if (firstColor) {
+                price = firstColor.price || 0;
+                discount = firstColor.discount || 0;
+                imageUrl = firstColor.images?.[0]?.secure_url || "";
+                stock = firstColor.stockStatus || "In stock";
+                variantId = firstVariant._id;
+                colorId = firstColor._id;
+              }
             }
+          } else if (product.productType === "bundle") {
+            price = product.bundleProducts?.price || 0;
+            discount = product.bundleProducts?.discount || 0;
+            imageUrl = product.bundleProducts?.images?.[0]?.secure_url || "";
+            stock = "In stock";
           }
-        } else if (product.productType === "bundle") {
-          price = product.bundleProducts?.price || 0;
-          discount = product.bundleProducts?.discount || 0;
-          imageUrl = product.bundleProducts?.images?.[0]?.secure_url || "";
-          stock = "In stock";
         }
 
         const gstAmount = (price * gst) / 100;
@@ -109,6 +131,8 @@ export const addToCart = createAsyncThunk(
             finalPrice,
             description,
             productType,
+            variantId,
+            colorId,
             imageUrl,
           });
         }

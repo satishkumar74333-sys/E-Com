@@ -94,42 +94,85 @@ function HomePage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
-        
-        {/* Enhanced Carousel Section */}
-        <section className="relative mb-12">
-          <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-500 shadow-2xl">
-            <div className="relative w-full overflow-hidden h-[400px] max-w-xs:h-[250px]">
-              <div
-                className={`flex h-full ${isAnimating ? "transition-transform duration-700 ease-in-out" : ""}`}
-                style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-              >
-                {carousel?.map((slide, index) => (
-                  <CarouselSlide
-                    key={index}
-                    image={slide?.images[0]?.secure_url}
-                    title={slide?.name}
-                    description={slide?.description}
-                  />
-                ))}
+      <div className="min-h-screen">
+        {/* Hero Section */}
+        <section className="relative bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-800 text-white overflow-hidden">
+          <div className="absolute inset-0 bg-black/20"></div>
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+            <div className="text-center">
+              <h1 className="text-4xl md:text-6xl font-bold mb-6 animate-fade-in">
+                Welcome to <span className="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">KGS DOORS</span>
+              </h1>
+              <p className="text-xl md:text-2xl mb-8 text-blue-100 max-w-3xl mx-auto">
+                Discover premium quality doors and furniture for your home. Crafted with excellence, designed for perfection.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={() => navigate('/Product')}
+                  className="bg-white text-blue-600 px-8 py-3 rounded-full font-semibold hover:bg-blue-50 transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  Shop Now
+                </button>
+                <button
+                  onClick={() => navigate('/About')}
+                  className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-blue-600 transition-all duration-300"
+                >
+                  Learn More
+                </button>
               </div>
-              
-              {/* Enhanced Navigation Dots */}
-              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-2">
-                {carousel?.map((_, index) => (
-                  <button
-                    key={index}
-                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                      currentSlide === index 
-                        ? "bg-white scale-125 shadow-lg" 
-                        : "bg-white/50 hover:bg-white/75"
-                    }`}
-                    onClick={() => {
-                      setIsAnimating(true);
-                      setCurrentSlide(index);
-                    }}
-                  />
-                ))}
+            </div>
+          </div>
+          {/* Decorative elements */}
+          <div className="absolute top-10 left-10 w-20 h-20 bg-white/10 rounded-full animate-bounce"></div>
+          <div className="absolute bottom-10 right-10 w-16 h-16 bg-white/10 rounded-full animate-bounce delay-1000"></div>
+        </section>
+
+        {/* Enhanced Carousel Section */}
+        <section className="relative py-16 bg-gray-50 dark:bg-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+                Featured Collections
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-300">
+                Explore our latest and most popular products
+              </p>
+            </div>
+            <div className="relative">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
+                <div className="relative w-full overflow-hidden h-[400px] md:h-[500px]">
+                  <div
+                    className={`flex h-full ${isAnimating ? "transition-transform duration-700 ease-in-out" : ""}`}
+                    style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+                  >
+                    {carousel?.map((slide, index) => (
+                      <CarouselSlide
+                        key={index}
+                        image={slide?.images[0]?.secure_url}
+                        title={slide?.name}
+                        description={slide?.description}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Enhanced Navigation Dots */}
+                  <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                    {carousel?.map((_, index) => (
+                      <button
+                        key={index}
+                        className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                          currentSlide === index
+                            ? "bg-blue-600 scale-125 shadow-lg"
+                            : "bg-gray-400 hover:bg-gray-600"
+                        }`}
+                        onClick={() => {
+                          setIsAnimating(true);
+                          setCurrentSlide(index);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -138,89 +181,106 @@ function HomePage() {
       
 
         {/* Popular Products Section */}
-        <section className="container mx-auto px-4 mb-16">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center mb-4">
-              <FiTrendingUp className="text-3xl text-orange-500 mr-3" />
-              <h2 className="text-3xl max-w-xs:text-2xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
-                Trending Products
-              </h2>
+        <section className="py-16 bg-white dark:bg-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="flex items-center justify-center mb-4">
+                <FiTrendingUp className="text-3xl text-orange-500 mr-3 animate-pulse" />
+                <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+                  Trending Products
+                </h2>
+              </div>
+              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                Discover our most popular items loved by customers worldwide
+              </p>
             </div>
-            <p className="text-gray-600 dark:text-gray-300 max-w-xs:text-sm">
-              Discover our most popular items loved by customers
-            </p>
-          </div>
-          
-          <div className="relative">
-            <div className="overflow-x-auto pb-4">
-              <div className="flex space-x-6 max-w-xs:space-x-3 w-max">
-                {popularProducts?.map((product, index) => (
-                  <div key={product._id} className="flex-shrink-0">
-                    <ProductCard
-                      data={product}
-                      onProductDelete={handleProductDelete}
-                      priority={index < 4}
-                      variant="featured"
-                    />
-                  </div>
-                ))}
+
+            <div className="relative">
+              <div className="overflow-x-auto pb-4 scrollbar-hide">
+                <div className="flex space-x-6 w-max px-4">
+                  {popularProducts?.map((product, index) => (
+                    <div key={product._id} className="flex-shrink-0 animate-slide-up" style={{animationDelay: `${index * 0.1}s`}}>
+                      <ProductCard
+                        data={product}
+                        onProductDelete={handleProductDelete}
+                        priority={index < 4}
+                        variant="featured"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         {/* All Products Section */}
-        <section className="container mx-auto px-4 mb-16">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center mb-4">
-              <FiShoppingBag className="text-3xl text-blue-500 mr-3" />
-              <h2 className="text-3xl max-w-xs:text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
-                All Products
-              </h2>
-            </div>
-            <p className="text-gray-600 dark:text-gray-300 max-w-xs:text-sm">
-              Explore our complete collection of amazing products
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 max-w-xs:gap-3">
-            {displayProducts?.map((product) => (
-              <ProductCard
-                key={product._id}
-                data={product}
-                onProductDelete={handleProductDelete}
-                variant="grid"
-              />
-            ))}
-          </div>
-
-          <div className="text-center mt-8">
-            <button onClick={()=>navigate("/product")} className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-8 rounded-full transition-colors duration-300">
-              View All Products
-            </button>
-          </div>
-
-          {displayProducts?.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400 text-lg">
-                No products available at the moment
+        <section className="py-16 bg-gray-50 dark:bg-gray-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <div className="flex items-center justify-center mb-4">
+                <FiShoppingBag className="text-3xl text-blue-500 mr-3 animate-bounce" />
+                <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
+                  All Products
+                </h2>
+              </div>
+              <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+                Explore our complete collection of amazing products crafted with care
               </p>
             </div>
-          )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {displayProducts?.map((product, index) => (
+                <div key={product._id} className="animate-fade-in" style={{animationDelay: `${index * 0.05}s`}}>
+                  <ProductCard
+                    data={product}
+                    onProductDelete={handleProductDelete}
+                    variant="grid"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-12">
+              <button
+                onClick={()=>navigate("/product")}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg"
+              >
+                View All Products
+              </button>
+            </div>
+
+            {displayProducts?.length === 0 && (
+              <div className="text-center py-16">
+                <div className="text-6xl mb-4">🛍️</div>
+                <p className="text-gray-500 dark:text-gray-400 text-xl">
+                  No products available at the moment
+                </p>
+                <p className="text-gray-400 dark:text-gray-500 mt-2">
+                  Check back soon for new arrivals!
+                </p>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Enhanced Feedback Section */}
-        <section className="bg-gradient-to-r from-gray-100 to-white dark:from-gray-800 dark:to-gray-900 py-16">
-          <div className="container mx-auto px-4">
+        <section className="py-16 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-800 dark:to-gray-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <h2 className="text-3xl max-w-xs:text-2xl font-bold text-gray-800 dark:text-white mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
                 What Our Customers Say
               </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
+                Hear from our satisfied customers
+              </p>
               <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto rounded-full"></div>
             </div>
-            
+
             <div className="max-w-4xl mx-auto">
-              <FeedbackForm />
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 mb-8">
+                <FeedbackForm />
+              </div>
               <FeedbackList />
             </div>
           </div>

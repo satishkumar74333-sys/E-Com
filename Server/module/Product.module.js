@@ -109,7 +109,9 @@ const BundleItemSchema = new Schema(
       required: true,
     },
 
-    
+    sku: { type: String }, // For variant products
+
+    quantity: { type: Number, default: 1, min: 1 },
   },
   { _id: false }
 );

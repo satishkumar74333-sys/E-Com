@@ -93,59 +93,7 @@ const AdminDashboard = () => {
     fetchProducts(1);
   }, []);
 
-  const [activeSection, setActiveSection] = useState(1);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  const navigation = [
-    {
-      id: 1,
-      label: "Dashboard",
-      icon: FaThLarge,
-      colors: "from-blue-500 to-purple-500",
-    },
-    {
-      id: 2,
-      label: "Users",
-      icon: FaUser,
-      colors: "from-green-500 to-teal-500",
-    },
-    {
-      id: 3,
-      label: "Orders",
-      icon: FaBox,
-      colors: "from-yellow-500 to-orange-500",
-    },
-    {
-      id: 4,
-      label: "Products",
-      icon: FaBoxOpen,
-      colors: "from-green-500 to-orange-500",
-    },
-    {
-      id: 5,
-      label: "Payments",
-      icon: FaCreditCard,
-      colors: "from-red-500 to-pink-500",
-    },
-    {
-      id: 6,
-      label: "Messages",
-      icon: FaEnvelope,
-      colors: "from-purple-500 to-indigo-500",
-    },
-    {
-      id: 7,
-      label: "Upsell",
-      icon: FaGift,
-      colors: "from-pink-500 to-red-500",
-    },
-    {
-      id: 8,
-      label: "Settings",
-      icon: MdSettings,
-      colors: "from-green-500 to-indigo-500",
-    },
-  ];
+  
   if (loading) {
     return (
       <Layout>
@@ -157,97 +105,26 @@ const AdminDashboard = () => {
   }
   return (
     <Layout>
-      <div className=" bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen select-none">
-        {/* Dashboard Header */}
-
-        {/* Button Section */}
-        <header className="bg-white dark:bg-gray-800 shadow-sm  top-[50px] sm:top-[66px] z-40  w-full fixed ">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
-            <div className="flex items-center justify-between h-16 ">
-              <h1 className="text-xl font-bold text-indigo-600">
-                Admin Dashboard
-              </h1>
-
-              {/* Mobile menu button */}
-              <button
-                className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              >
-                {isMobileMenuOpen ? (
-                  <XCircleIcon className="h-6 w-6" />
-                ) : (
-                  <MdMenu className="h-6 w-6" />
-                )}
-              </button>
-
-              {/* Desktop Navigation */}
-              <nav className="hidden md:flex space-x-1">
-                {navigation.map((items) => (
-                  <button
-                    key={items.id}
-                    onClick={() => (
-                      setActiveSection(items.id),
-                      setIsMobileMenuOpen(!isMobileMenuOpen)
-                    )}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out flex items-center ${
-                      activeSection === items.id
-                        ? "bg-indigo-500  text-white dark:text-black"
-                        : "text-gray-800 hover:bg-gray-300 dark:bg-gray-600 hover:dark:bg-gray-500 dark:text-white"
-                    }`}
-                  >
-                    <items.icon className="w-4 h-4 mr-2" />
-
-                    {items.label}
-                  </button>
-                ))}
-              </nav>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Header */}
+        <div className="bg-white dark:bg-gray-800 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                <p className="text-gray-600 dark:text-gray-400 mt-1">Welcome back! Here's what's happening with your store.</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-500 dark:text-gray-400">Last updated</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{new Date().toLocaleDateString()}</p>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Mobile Navigation */}
-          <div className={`md:hidden ${isMobileMenuOpen ? "block" : "hidden"}`}>
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-white dark:bg-gray-800 shadow-lg absolute w-full z-50">
-              {navigation.map((items) => (
-                <button
-                  key={items.id}
-                  onClick={() => (
-                    setActiveSection(items.id),
-                    setIsMobileMenuOpen(!isMobileMenuOpen)
-                  )}
-                  className={`w-full px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ease-in-out flex items-center ${
-                    activeSection === items.id
-                      ? "bg-indigo-500  text-white dark:text-black"
-                      : "text-gray-800 hover:bg-gray-300 dark:bg-gray-600 hover:dark:bg-gray-500 dark:text-white"
-                  }`}
-                >
-                  <items.icon className="w-4 h-4 mr-2" />
-
-                  {items.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </header>
-
-        {/* Dynamic Content Section */}
-        <div className="pt-[100px] max-w-xs:pt-[50px]">
-          {activeSection === 1 && <DashBoard stats={stats} orders={orders} />}
-          {activeSection === 2 && <UsersCart users={users} />}
-          {activeSection === 3 && <OrderCart order={orders} />}
-          {activeSection === 4 && (
-            <ProductsCart
-              currentPage={currentPage}
-              totalPages={totalPages}
-              products={products}
-              fetchProducts={fetchProducts}
-            />
-          )}
-          {activeSection === 5 && (
-            <PaymentCart Razorpay={Razorpay} payments={payments} />
-          )}
-          {activeSection === 6 && <Messages />}
-          {activeSection === 7 && <UpsellManagement />}
-          {activeSection === 8 && <ShopInformationForm />}
+        {/* Dashboard Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <DashBoard stats={stats} orders={orders} />
         </div>
       </div>
     </Layout>
